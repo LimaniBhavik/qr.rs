@@ -1,5 +1,6 @@
 use yew::prelude::*;
-use qr_rs::{QRGenerator, QRData, ContactData};
+use qr_rs::{QRBuilder, QRData, ContactData};
+use qr_rs::utils::parse_hex_color;
 use base64::{Engine as _, engine::general_purpose};
 use wasm_bindgen::prelude::*;
 use web_sys::{HtmlInputElement, HtmlTextAreaElement};
@@ -32,7 +33,7 @@ pub fn qr_web() -> Html {
         let fg = (*fg_color).clone();
         let bg = (*bg_color).clone();
 
-        let mut generator = QRGenerator::new();
+        let mut builder = QRBuilder::new();
 
         // Apply EC level
         let level = match ec.as_str() {
@@ -41,11 +42,11 @@ pub fn qr_web() -> Html {
             "Q" => qr_rs::qrcode::EcLevel::Q,
             _ => qr_rs::qrcode::EcLevel::H,
         };
-        generator = generator.with_error_correction(level);
+        builder = builder.error_correction(level);
 
         // Apply colors
-        if let (Some(fg_rgba), Some(bg_rgba)) = (parse_hex(&fg), parse_hex(&bg)) {
-            generator = generator.with_colors(fg_rgba, bg_rgba);
+        if let (Some(fg_rgba), Some(bg_rgba)) = (parse_hex_color(&fg), parse_hex_color(&bg)) {
+            builder = builder.colors(fg_rgba, bg_rgba);
         }
 
         let data = match mode {
@@ -54,8 +55,10 @@ pub fn qr_web() -> Html {
             Mode::Contact => QRData::Contact(contact_data),
         };
 
-        if let Ok(qr) = generator.generate(&data) {
-            if let Ok(bytes) = generator.to_png(&qr, 300, None) {
+        builder = builder.data(data);
+
+        if let Ok(generator) = builder.build() {
+            if let Ok(bytes) = generator.to_png(300, None) {
                  let b64 = general_purpose::STANDARD.encode(&bytes);
                  Some(format!("data:image/png;base64,{}", b64))
             } else {
@@ -217,18 +220,6 @@ pub fn qr_web() -> Html {
                 </div>
             }
         </div>
-    }
-}
-
-fn parse_hex(hex: &str) -> Option<[u8; 4]> {
-    let hex = hex.trim_start_matches('#');
-    if hex.len() == 6 {
-        let r = u8::from_str_radix(&hex[0..2], 16).ok()?;
-        let g = u8::from_str_radix(&hex[2..4], 16).ok()?;
-        let b = u8::from_str_radix(&hex[4..6], 16).ok()?;
-        Some([r, g, b, 255])
-    } else {
-        None
     }
 }
 
