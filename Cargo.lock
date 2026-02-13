@@ -3850,7 +3850,7 @@ dependencies = [
 
 [[package]]
 name = "qr-cli"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "clap",
  "colored",
@@ -3862,7 +3862,7 @@ dependencies = [
 
 [[package]]
 name = "qr-gui"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "eframe",
  "egui",
@@ -3873,7 +3873,7 @@ dependencies = [
 
 [[package]]
 name = "qr-rs"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "image 0.25.9",
  "imageproc",
@@ -3885,7 +3885,7 @@ dependencies = [
 
 [[package]]
 name = "qr-web"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "base64",
  "gloo 0.11.0",

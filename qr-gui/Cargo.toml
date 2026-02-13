@@ -1,10 +1,10 @@
 [package]
 name = "qr-gui"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 
 [dependencies]
-qr-rs = { path = "../" }
+qr-rs = { path = "../", version = "0.4.0" }
 eframe = "0.27"
 egui = "0.27"
 egui_extras = { version = "0.27", features = ["image"] }
