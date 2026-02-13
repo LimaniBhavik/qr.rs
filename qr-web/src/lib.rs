@@ -1,8 +1,8 @@
-use base64::{engine::general_purpose, Engine as _};
-use qr_rs::{ContactData, QRData, QRGenerator};
+use yew::prelude::*;
+use qr_rs::{QRGenerator, QRData, ContactData};
+use base64::{Engine as _, engine::general_purpose};
 use wasm_bindgen::prelude::*;
 use web_sys::{HtmlInputElement, HtmlTextAreaElement};
-use yew::prelude::*;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 enum Mode {
@@ -18,13 +18,36 @@ pub fn qr_web() -> Html {
     let text_input = use_state(String::new);
     let contact = use_state(ContactData::default);
 
+    // Customization state
+    let ec_level = use_state(|| "H".to_string());
+    let fg_color = use_state(|| "#000000".to_string());
+    let bg_color = use_state(|| "#FFFFFF".to_string());
+
     let qr_data_url = {
         let mode = *mode;
         let url = (*url_input).clone();
         let text = (*text_input).clone();
         let contact_data = (*contact).clone();
+        let ec = (*ec_level).clone();
+        let fg = (*fg_color).clone();
+        let bg = (*bg_color).clone();
 
-        let generator = QRGenerator::new();
+        let mut generator = QRGenerator::new();
+
+        // Apply EC level
+        let level = match ec.as_str() {
+            "L" => qr_rs::qrcode::EcLevel::L,
+            "M" => qr_rs::qrcode::EcLevel::M,
+            "Q" => qr_rs::qrcode::EcLevel::Q,
+            _ => qr_rs::qrcode::EcLevel::H,
+        };
+        generator = generator.with_error_correction(level);
+
+        // Apply colors
+        if let (Some(fg_rgba), Some(bg_rgba)) = (parse_hex(&fg), parse_hex(&bg)) {
+            generator = generator.with_colors(fg_rgba, bg_rgba);
+        }
+
         let data = match mode {
             Mode::Url => QRData::URL(url),
             Mode::Text => QRData::Text(text),
@@ -32,11 +55,11 @@ pub fn qr_web() -> Html {
         };
 
         if let Ok(qr) = generator.generate(&data) {
-            if let Ok(bytes) = generator.to_png(&qr, 300) {
-                let b64 = general_purpose::STANDARD.encode(&bytes);
-                Some(format!("data:image/png;base64,{}", b64))
+            if let Ok(bytes) = generator.to_png(&qr, 300, None) {
+                 let b64 = general_purpose::STANDARD.encode(&bytes);
+                 Some(format!("data:image/png;base64,{}", b64))
             } else {
-                None
+                 None
             }
         } else {
             None
@@ -152,6 +175,40 @@ pub fn qr_web() -> Html {
                 }
             </div>
 
+            <div class="customization-area" style="margin-top: 20px; padding: 15px; background: #eee; border-radius: 8px;">
+                <h3>{"Customization"}</h3>
+                <div class="input-group">
+                    <label>{"Error Correction Level"}</label>
+                    <select onchange={let ec_level = ec_level.clone(); Callback::from(move |e: Event| {
+                        let input: HtmlInputElement = e.target_unchecked_into();
+                        ec_level.set(input.value());
+                    })}>
+                        <option value="L" selected={*ec_level == "L"}>{"Low (7%)"}</option>
+                        <option value="M" selected={*ec_level == "M"}>{"Medium (15%)"}</option>
+                        <option value="Q" selected={*ec_level == "Q"}>{"Quartile (25%)"}</option>
+                        <option value="H" selected={*ec_level == "H"}>{"High (30%)"}</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>{"Foreground Color"}</label>
+                    <input type="color" value={(*fg_color).clone()}
+                        oninput={let fg_color = fg_color.clone(); Callback::from(move |e: InputEvent| {
+                            let input: HtmlInputElement = e.target_unchecked_into();
+                            fg_color.set(input.value());
+                        })}
+                    />
+                </div>
+                 <div class="input-group">
+                    <label>{"Background Color"}</label>
+                    <input type="color" value={(*bg_color).clone()}
+                        oninput={let bg_color = bg_color.clone(); Callback::from(move |e: InputEvent| {
+                            let input: HtmlInputElement = e.target_unchecked_into();
+                            bg_color.set(input.value());
+                        })}
+                    />
+                </div>
+            </div>
+
             if let Some(data_url) = qr_data_url {
                 <div class="qr-display">
                     <img src={data_url.clone()} alt="QR Code" style="max-width: 300px; border: 1px solid #ccc;" />
@@ -160,6 +217,18 @@ pub fn qr_web() -> Html {
                 </div>
             }
         </div>
+    }
+}
+
+fn parse_hex(hex: &str) -> Option<[u8; 4]> {
+    let hex = hex.trim_start_matches('#');
+    if hex.len() == 6 {
+        let r = u8::from_str_radix(&hex[0..2], 16).ok()?;
+        let g = u8::from_str_radix(&hex[2..4], 16).ok()?;
+        let b = u8::from_str_radix(&hex[4..6], 16).ok()?;
+        Some([r, g, b, 255])
+    } else {
+        None
     }
 }
 
