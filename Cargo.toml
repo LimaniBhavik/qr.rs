@@ -1,10 +1,14 @@
 [package]
 name = "qr-rs"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 authors = ["Bhavik <limanibhavik@gmail.com>"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/LimaniBhavik/qr.rs"
+description = "A comprehensive QR code generator library supporting URL, Text, and vCard formats with advanced customization."
+readme = "README.md"
+keywords = ["qrcode", "generator", "image", "vcard"]
+categories = ["multimedia::images", "encoding"]
 
 [workspace]
 members = [

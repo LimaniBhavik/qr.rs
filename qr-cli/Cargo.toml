@@ -1,10 +1,16 @@
 [package]
 name = "qr-cli"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
+authors = ["Bhavik <limanibhavik@gmail.com>"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/LimaniBhavik/qr.rs"
+description = "A command-line interface for generating QR codes (URL, Text, Contact) with customization."
+keywords = ["cli", "qrcode", "generator"]
+categories = ["command-line-utilities"]
 
 [dependencies]
-qr-rs = { path = "../" }
+qr-rs = { path = "../", version = "0.4.0" }
 clap = { version = "4.5", features = ["derive"] }
 dialoguer = "0.11"
 colored = "2.1"
