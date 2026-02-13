@@ -3873,10 +3873,11 @@ dependencies = [
 
 [[package]]
 name = "qr-rs"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "image 0.25.9",
  "imageproc",
+ "log",
  "qrcode",
  "serde",
  "thiserror 1.0.69",

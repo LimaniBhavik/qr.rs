@@ -1,5 +1,5 @@
 use eframe::{egui, App, Frame};
-use qr_rs::{ContactData, QRData, QRGenerator};
+use qr_rs::{QRBuilder, ContactData, QRData};
 use qr_rs::qrcode::EcLevel;
 
 #[derive(PartialEq, Debug)]
@@ -15,7 +15,6 @@ struct QRApp {
     text_input: String,
     contact: ContactData,
     qr_texture: Option<egui::TextureHandle>,
-    generator: QRGenerator,
 
     // Customization state
     ec_level: EcLevel,
@@ -31,7 +30,6 @@ impl Default for QRApp {
             text_input: String::new(),
             contact: ContactData::default(),
             qr_texture: None,
-            generator: QRGenerator::new(),
             ec_level: EcLevel::H,
             foreground_color: [0, 0, 0],
             background_color: [255, 255, 255],
@@ -164,26 +162,28 @@ impl QRApp {
             Mode::Contact => QRData::Contact(self.contact.clone()),
         };
 
-        // Configure generator
         let fg = [self.foreground_color[0], self.foreground_color[1], self.foreground_color[2], 255];
         let bg = [self.background_color[0], self.background_color[1], self.background_color[2], 255];
 
-        self.generator = QRGenerator::new()
-            .with_error_correction(self.ec_level)
-            .with_colors(fg, bg);
+        let builder = QRBuilder::new()
+            .data(data)
+            .error_correction(self.ec_level)
+            .colors(fg, bg);
 
-        match self.generator.to_image(&self.generator.generate(&data).unwrap_or(qr_rs::qrcode::QrCode::new(b"").unwrap()), 200, None) {
-            Ok(image) => {
-                let size = [image.width() as usize, image.height() as usize];
-                let pixels = image.to_rgba8().into_raw();
+        if let Ok(generator) = builder.build() {
+            match generator.to_image(200, None) {
+                Ok(image) => {
+                    let size = [image.width() as usize, image.height() as usize];
+                    let pixels = image.to_rgba8().into_raw();
 
-                let color_image = egui::ColorImage::from_rgba_unmultiplied(size, &pixels);
+                    let color_image = egui::ColorImage::from_rgba_unmultiplied(size, &pixels);
 
-                self.qr_texture =
-                    Some(ctx.load_texture("qr-code", color_image, egui::TextureOptions::default()));
-            }
-            Err(_) => {
-                self.qr_texture = None;
+                    self.qr_texture =
+                        Some(ctx.load_texture("qr-code", color_image, egui::TextureOptions::default()));
+                }
+                Err(_) => {
+                    self.qr_texture = None;
+                }
             }
         }
     }
