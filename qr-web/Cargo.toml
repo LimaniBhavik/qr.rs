@@ -1,0 +1,14 @@
+[package]
+name = "qr-web"
+version = "0.2.0"
+edition = "2021"
+
+[dependencies]
+qr-rs = { path = "../", version = "0.4.0" }
+yew = { version = "0.21", features = ["csr"] }
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = ["HtmlInputElement", "HtmlTextAreaElement", "InputEvent"] }
+gloo = "0.11"
+gloo-console = "0.3"
+base64 = "0.21"

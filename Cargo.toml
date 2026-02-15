@@ -1,0 +1,31 @@
+[package]
+name = "qr-rs"
+version = "0.4.0"
+edition = "2021"
+authors = ["Bhavik <limanibhavik@gmail.com>"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/LimaniBhavik/qr.rs"
+description = "A comprehensive QR code generator library supporting URL, Text, and vCard formats with advanced customization."
+readme = "README.md"
+keywords = ["qrcode", "generator", "image", "vcard"]
+categories = ["multimedia::images", "encoding"]
+
+[workspace]
+members = [
+    "qr-cli",
+    "qr-gui",
+    "qr-web",
+]
+resolver = "2"
+
+[dependencies]
+qrcode = { version = "0.14", features = ["svg"] }
+image = { version = "0.25", features = ["png", "jpeg"] }
+imageproc = "0.25"
+thiserror = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+
+[lib]
+name = "qr_rs"
+path = "src/lib.rs"
