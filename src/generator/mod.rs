@@ -7,6 +7,10 @@ use log::{debug, info};
 use qrcode::QrCode;
 use std::io::Cursor;
 
+const DEFAULT_ERROR_CORRECTION: qrcode::EcLevel = qrcode::EcLevel::H;
+const DEFAULT_FOREGROUND_COLOR: Rgba<u8> = Rgba([0, 0, 0, 255]);
+const DEFAULT_BACKGROUND_COLOR: Rgba<u8> = Rgba([255, 255, 255, 255]);
+
 pub struct QRBuilder {
     data: Option<QRData>,
     error_correction: qrcode::EcLevel,
@@ -18,9 +22,9 @@ impl Default for QRBuilder {
     fn default() -> Self {
         Self {
             data: None,
-            error_correction: qrcode::EcLevel::H,
-            foreground_color: Rgba([0, 0, 0, 255]),
-            background_color: Rgba([255, 255, 255, 255]),
+            error_correction: DEFAULT_ERROR_CORRECTION,
+            foreground_color: DEFAULT_FOREGROUND_COLOR,
+            background_color: DEFAULT_BACKGROUND_COLOR,
         }
     }
 }
@@ -77,12 +81,10 @@ pub struct QRGenerator {
 
 impl QRGenerator {
     pub fn new(data: QRData) -> Self {
-        Self {
-            data,
-            error_correction: qrcode::EcLevel::H,
-            foreground_color: Rgba([0, 0, 0, 255]),
-            background_color: Rgba([255, 255, 255, 255]),
-        }
+        QRBuilder::new()
+            .data(data)
+            .build()
+            .expect("QRBuilder should not fail when data is provided")
     }
 
     pub fn generate(&self) -> Result<QrCode, QRError> {
@@ -91,7 +93,10 @@ impl QRGenerator {
         let content = match &self.data {
             QRData::URL(url) => format_url(url),
             QRData::Text(text) => text.clone(),
-            QRData::Contact(contact) => generate_vcard(contact),
+            QRData::Contact(contact) => {
+                contact.validate()?;
+                generate_vcard(contact)
+            }
         };
 
         QrCode::with_error_correction_level(&content, self.error_correction)
@@ -111,13 +116,12 @@ impl QRGenerator {
 
         let mut image = RgbaImage::new(width, height);
 
-        for (x, y, pixel) in qr_image.enumerate_pixels() {
-            let color = if pixel.0[0] == 0 {
+        for (target_pixel, pixel) in image.pixels_mut().zip(qr_image.pixels()) {
+            *target_pixel = if pixel.0[0] == 0 {
                 self.foreground_color
             } else {
                 self.background_color
             };
-            image.put_pixel(x, y, color);
         }
 
         if let Some(logo_img) = logo {

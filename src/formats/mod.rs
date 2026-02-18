@@ -1,5 +1,6 @@
 use crate::error::QRError;
-use serde::{Deserialize, Serialize};
+use std::sync::OnceLock;
+use regex::Regex;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct ContactData {
@@ -9,6 +10,27 @@ pub struct ContactData {
     pub email: String,
     pub organization: String,
     pub website: String,
+}
+
+fn is_valid_email(email: &str) -> bool {
+    static EMAIL_REGEX: OnceLock<Regex> = OnceLock::new();
+    EMAIL_REGEX.get_or_init(|| {
+        Regex::new(r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$").unwrap()
+    }).is_match(email)
+}
+
+fn is_valid_phone(phone: &str) -> bool {
+    static PHONE_REGEX: OnceLock<Regex> = OnceLock::new();
+    PHONE_REGEX.get_or_init(|| {
+        Regex::new(r"^\+?[0-9\s\-()\.]{7,20}$").unwrap()
+    }).is_match(phone)
+}
+
+fn is_valid_url(url: &str) -> bool {
+    static URL_REGEX: OnceLock<Regex> = OnceLock::new();
+    URL_REGEX.get_or_init(|| {
+        Regex::new(r"^(https?://)?([\w\d-]+\.)+[\w\d-]+(/.*)?$").unwrap()
+    }).is_match(url)
 }
 
 impl ContactData {
@@ -25,6 +47,28 @@ impl ContactData {
                 reason: "Contact data cannot be empty".to_string(),
             });
         }
+
+        if !self.email.is_empty() && !is_valid_email(&self.email) {
+            return Err(QRError::VCardError {
+                field: "email".to_string(),
+                reason: "Invalid email format".to_string(),
+            });
+        }
+
+        if !self.phone.is_empty() && !is_valid_phone(&self.phone) {
+            return Err(QRError::VCardError {
+                field: "phone".to_string(),
+                reason: "Invalid phone number format".to_string(),
+            });
+        }
+
+        if !self.website.is_empty() && !is_valid_url(&self.website) {
+            return Err(QRError::VCardError {
+                field: "website".to_string(),
+                reason: "Invalid website URL format".to_string(),
+            });
+        }
+
         Ok(())
     }
 }
@@ -110,5 +154,65 @@ mod tests {
         assert!(vcard.contains("BEGIN:VCARD"));
         assert!(vcard.contains("FN:John Doe"));
         assert!(vcard.contains("URL:https://example.com"));
+    }
+
+    #[test]
+    fn test_contact_data_validation() {
+        // Valid contact
+        let contact = ContactData {
+            first_name: "John".to_string(),
+            last_name: "Doe".to_string(),
+            email: "john@example.com".to_string(),
+            phone: "+1234567890".to_string(),
+            website: "example.com".to_string(),
+            ..Default::default()
+        };
+        assert!(contact.validate().is_ok());
+
+        // Empty contact (invalid)
+        let empty_contact = ContactData::default();
+        assert!(empty_contact.validate().is_err());
+
+        // Invalid email
+        let invalid_email = ContactData {
+            email: "invalid-email".to_string(),
+            ..contact.clone()
+        };
+        assert!(invalid_email.validate().is_err());
+
+        // Invalid phone
+        let invalid_phone = ContactData {
+            phone: "not-a-phone".to_string(),
+            ..contact.clone()
+        };
+        assert!(invalid_phone.validate().is_err());
+
+        // Invalid website
+        let invalid_website = ContactData {
+            website: "not-a-url".to_string(),
+            ..contact.clone()
+        };
+        assert!(invalid_website.validate().is_err());
+
+        // Website without protocol (should be valid as format_url handles it)
+        let no_proto_website = ContactData {
+            website: "example.com".to_string(),
+            ..contact.clone()
+        };
+        assert!(no_proto_website.validate().is_ok());
+
+        // Website with protocol
+        let proto_website = ContactData {
+            website: "https://example.com/test".to_string(),
+            ..contact.clone()
+        };
+        assert!(proto_website.validate().is_ok());
+
+        // Valid international phone
+        let intl_phone = ContactData {
+            phone: "+44 20 7946 0958".to_string(),
+            ..contact.clone()
+        };
+        assert!(intl_phone.validate().is_ok());
     }
 }
