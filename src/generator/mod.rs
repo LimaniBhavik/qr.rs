@@ -107,13 +107,12 @@ impl QRGenerator {
 
         let mut image = RgbaImage::new(width, height);
 
-        for (x, y, pixel) in qr_image.enumerate_pixels() {
-            let color = if pixel.0[0] == 0 {
+        for (target_pixel, pixel) in image.pixels_mut().zip(qr_image.pixels()) {
+            *target_pixel = if pixel.0[0] == 0 {
                 self.foreground_color
             } else {
                 self.background_color
             };
-            image.put_pixel(x, y, color);
         }
 
         if let Some(logo_img) = logo {
