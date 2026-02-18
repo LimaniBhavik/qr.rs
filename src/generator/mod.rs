@@ -7,6 +7,10 @@ use qrcode::QrCode;
 use std::io::Cursor;
 use log::{debug, info};
 
+const DEFAULT_ERROR_CORRECTION: qrcode::EcLevel = qrcode::EcLevel::H;
+const DEFAULT_FOREGROUND_COLOR: Rgba<u8> = Rgba([0, 0, 0, 255]);
+const DEFAULT_BACKGROUND_COLOR: Rgba<u8> = Rgba([255, 255, 255, 255]);
+
 pub struct QRBuilder {
     data: Option<QRData>,
     error_correction: qrcode::EcLevel,
@@ -18,9 +22,9 @@ impl Default for QRBuilder {
     fn default() -> Self {
         Self {
             data: None,
-            error_correction: qrcode::EcLevel::H,
-            foreground_color: Rgba([0, 0, 0, 255]),
-            background_color: Rgba([255, 255, 255, 255]),
+            error_correction: DEFAULT_ERROR_CORRECTION,
+            foreground_color: DEFAULT_FOREGROUND_COLOR,
+            background_color: DEFAULT_BACKGROUND_COLOR,
         }
     }
 }
@@ -77,12 +81,10 @@ pub struct QRGenerator {
 
 impl QRGenerator {
     pub fn new(data: QRData) -> Self {
-        Self {
-            data,
-            error_correction: qrcode::EcLevel::H,
-            foreground_color: Rgba([0, 0, 0, 255]),
-            background_color: Rgba([255, 255, 255, 255]),
-        }
+        QRBuilder::new()
+            .data(data)
+            .build()
+            .expect("QRBuilder should not fail when data is provided")
     }
 
     pub fn generate(&self) -> Result<QrCode, QRError> {
