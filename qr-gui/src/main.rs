@@ -1,6 +1,6 @@
 use eframe::{egui, App, Frame};
-use qr_rs::{QRBuilder, ContactData, QRData};
 use qr_rs::qrcode::EcLevel;
+use qr_rs::{ContactData, QRBuilder, QRData};
 
 #[derive(PartialEq, Debug)]
 enum Mode {
@@ -122,20 +122,46 @@ impl App for QRApp {
                 egui::ComboBox::from_id_source("ec_level")
                     .selected_text(format!("{:?}", self.ec_level))
                     .show_ui(ui, |ui| {
-                        if ui.selectable_value(&mut self.ec_level, EcLevel::L, "L (Low)").clicked() { changed = true; }
-                        if ui.selectable_value(&mut self.ec_level, EcLevel::M, "M (Medium)").clicked() { changed = true; }
-                        if ui.selectable_value(&mut self.ec_level, EcLevel::Q, "Q (Quartile)").clicked() { changed = true; }
-                        if ui.selectable_value(&mut self.ec_level, EcLevel::H, "H (High)").clicked() { changed = true; }
+                        if ui
+                            .selectable_value(&mut self.ec_level, EcLevel::L, "L (Low)")
+                            .clicked()
+                        {
+                            changed = true;
+                        }
+                        if ui
+                            .selectable_value(&mut self.ec_level, EcLevel::M, "M (Medium)")
+                            .clicked()
+                        {
+                            changed = true;
+                        }
+                        if ui
+                            .selectable_value(&mut self.ec_level, EcLevel::Q, "Q (Quartile)")
+                            .clicked()
+                        {
+                            changed = true;
+                        }
+                        if ui
+                            .selectable_value(&mut self.ec_level, EcLevel::H, "H (High)")
+                            .clicked()
+                        {
+                            changed = true;
+                        }
                     });
             });
 
             ui.horizontal(|ui| {
                 ui.label("Foreground:");
-                if ui.color_edit_button_srgb(&mut self.foreground_color).changed() {
+                if ui
+                    .color_edit_button_srgb(&mut self.foreground_color)
+                    .changed()
+                {
                     changed = true;
                 }
                 ui.label("Background:");
-                if ui.color_edit_button_srgb(&mut self.background_color).changed() {
+                if ui
+                    .color_edit_button_srgb(&mut self.background_color)
+                    .changed()
+                {
                     changed = true;
                 }
             });
@@ -162,8 +188,18 @@ impl QRApp {
             Mode::Contact => QRData::Contact(self.contact.clone()),
         };
 
-        let fg = [self.foreground_color[0], self.foreground_color[1], self.foreground_color[2], 255];
-        let bg = [self.background_color[0], self.background_color[1], self.background_color[2], 255];
+        let fg = [
+            self.foreground_color[0],
+            self.foreground_color[1],
+            self.foreground_color[2],
+            255,
+        ];
+        let bg = [
+            self.background_color[0],
+            self.background_color[1],
+            self.background_color[2],
+            255,
+        ];
 
         let builder = QRBuilder::new()
             .data(data)
@@ -178,8 +214,11 @@ impl QRApp {
 
                     let color_image = egui::ColorImage::from_rgba_unmultiplied(size, &pixels);
 
-                    self.qr_texture =
-                        Some(ctx.load_texture("qr-code", color_image, egui::TextureOptions::default()));
+                    self.qr_texture = Some(ctx.load_texture(
+                        "qr-code",
+                        color_image,
+                        egui::TextureOptions::default(),
+                    ));
                 }
                 Err(_) => {
                     self.qr_texture = None;

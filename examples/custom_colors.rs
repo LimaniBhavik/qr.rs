@@ -1,5 +1,5 @@
-use qr_rs::QRBuilder;
 use qr_rs::error::QRError;
+use qr_rs::QRBuilder;
 
 fn main() -> Result<(), QRError> {
     // Custom colors (Red foreground, White background)
