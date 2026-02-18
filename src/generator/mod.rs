@@ -91,7 +91,10 @@ impl QRGenerator {
         let content = match &self.data {
             QRData::URL(url) => format_url(url),
             QRData::Text(text) => text.clone(),
-            QRData::Contact(contact) => generate_vcard(contact),
+            QRData::Contact(contact) => {
+                contact.validate()?;
+                generate_vcard(contact)
+            }
         };
 
         QrCode::with_error_correction_level(&content, self.error_correction)
