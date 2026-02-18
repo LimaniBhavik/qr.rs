@@ -157,3 +157,62 @@ impl QRGenerator {
         Ok(builder.build())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::formats::ContactData;
+
+    #[test]
+    fn test_generate_text() {
+        let generator = QRGenerator::new(QRData::Text("Hello World".to_string()));
+        let result = generator.generate();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_generate_url() {
+        let generator = QRGenerator::new(QRData::URL("example.com".to_string()));
+        let result = generator.generate();
+        assert!(result.is_ok());
+
+        let generator_with_protocol = QRGenerator::new(QRData::URL("https://example.com".to_string()));
+        let result_with_protocol = generator_with_protocol.generate();
+        assert!(result_with_protocol.is_ok());
+    }
+
+    #[test]
+    fn test_generate_contact() {
+        let contact = ContactData {
+            first_name: "John".to_string(),
+            last_name: "Doe".to_string(),
+            phone: "1234567890".to_string(),
+            ..Default::default()
+        };
+        let generator = QRGenerator::new(QRData::Contact(contact));
+        let result = generator.generate();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_generate_with_error_correction() {
+        let data = QRData::Text("Test EC".to_string());
+
+        let levels = [
+            qrcode::EcLevel::L,
+            qrcode::EcLevel::M,
+            qrcode::EcLevel::Q,
+            qrcode::EcLevel::H,
+        ];
+
+        for &level in &levels {
+            let generator = QRBuilder::new()
+                .data(data.clone())
+                .error_correction(level)
+                .build()
+                .unwrap();
+            let result = generator.generate();
+            assert!(result.is_ok(), "Failed for EC level {:?}", level);
+        }
+    }
+}
