@@ -1,13 +1,10 @@
-use qr_rs::{QRBuilder, ContactData, QRData};
+use qr_rs::{ContactData, QRBuilder, QRData};
 
 #[test]
 fn test_url_qr_generation() {
     let data = QRData::URL("example.com".to_string());
     // Use Builder to create generator
-    let generator = QRBuilder::new()
-        .data(data)
-        .build()
-        .unwrap();
+    let generator = QRBuilder::new().data(data).build().unwrap();
 
     // Check if we can generate PNG
     let png = generator.to_png(300, None);
@@ -23,10 +20,7 @@ fn test_contact_qr_generation() {
         ..Default::default()
     };
     let data = QRData::Contact(contact);
-    let generator = QRBuilder::new()
-        .data(data)
-        .build()
-        .unwrap();
+    let generator = QRBuilder::new().data(data).build().unwrap();
 
     let svg = generator.to_svg();
     assert!(svg.is_ok());
@@ -40,11 +34,7 @@ fn test_custom_colors() {
 
     let data = QRData::Text("Test Colors".to_string());
 
-    let generator = QRBuilder::new()
-        .data(data)
-        .colors(fg, bg)
-        .build()
-        .unwrap();
+    let generator = QRBuilder::new().data(data).colors(fg, bg).build().unwrap();
 
     // Internal struct fields are private, so we test behavior
     let image = generator.to_image(100, None).unwrap();

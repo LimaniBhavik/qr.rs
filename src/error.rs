@@ -1,6 +1,6 @@
-use thiserror::Error;
 use image::ImageError;
 use qrcode::types::QrError;
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum QRError {

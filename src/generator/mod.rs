@@ -3,9 +3,9 @@ use crate::formats::{format_url, generate_vcard, QRData};
 use image::{DynamicImage, ImageFormat, Luma, Rgba, RgbaImage};
 use imageproc::drawing::draw_filled_rect_mut;
 use imageproc::rect::Rect;
+use log::{debug, info};
 use qrcode::QrCode;
 use std::io::Cursor;
-use log::{debug, info};
 
 pub struct QRBuilder {
     data: Option<QRData>,
@@ -98,7 +98,11 @@ impl QRGenerator {
             .map_err(QRError::QrGenerationError)
     }
 
-    pub fn to_image(&self, size: u32, logo: Option<&DynamicImage>) -> Result<DynamicImage, QRError> {
+    pub fn to_image(
+        &self,
+        size: u32,
+        logo: Option<&DynamicImage>,
+    ) -> Result<DynamicImage, QRError> {
         let qr = self.generate()?;
 
         let qr_image = qr.render::<Luma<u8>>().min_dimensions(size, size).build();
@@ -120,7 +124,8 @@ impl QRGenerator {
             info!("Adding logo to QR code");
             // Calculate logo size (e.g., 20% of QR code size)
             let logo_size = (width as f32 * 0.2) as u32;
-            let logo_resized = logo_img.resize(logo_size, logo_size, image::imageops::FilterType::Lanczos3);
+            let logo_resized =
+                logo_img.resize(logo_size, logo_size, image::imageops::FilterType::Lanczos3);
 
             let x_offset = (width - logo_resized.width()) / 2;
             let y_offset = (height - logo_resized.height()) / 2;
@@ -176,7 +181,8 @@ mod tests {
         let result = generator.generate();
         assert!(result.is_ok());
 
-        let generator_with_protocol = QRGenerator::new(QRData::URL("https://example.com".to_string()));
+        let generator_with_protocol =
+            QRGenerator::new(QRData::URL("https://example.com".to_string()));
         let result_with_protocol = generator_with_protocol.generate();
         assert!(result_with_protocol.is_ok());
     }

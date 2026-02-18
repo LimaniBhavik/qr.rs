@@ -1,5 +1,5 @@
-use qr_rs::{QRBuilder, ContactData};
 use qr_rs::error::QRError;
+use qr_rs::{ContactData, QRBuilder};
 
 fn main() -> Result<(), QRError> {
     // Generate URL QR code

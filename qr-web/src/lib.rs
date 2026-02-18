@@ -1,9 +1,9 @@
-use yew::prelude::*;
-use qr_rs::{QRBuilder, QRData, ContactData};
+use base64::{engine::general_purpose, Engine as _};
 use qr_rs::utils::parse_hex_color;
-use base64::{Engine as _, engine::general_purpose};
+use qr_rs::{ContactData, QRBuilder, QRData};
 use wasm_bindgen::prelude::*;
 use web_sys::{HtmlInputElement, HtmlTextAreaElement};
+use yew::prelude::*;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 enum Mode {
@@ -59,10 +59,10 @@ pub fn qr_web() -> Html {
 
         if let Ok(generator) = builder.build() {
             if let Ok(bytes) = generator.to_png(300, None) {
-                 let b64 = general_purpose::STANDARD.encode(&bytes);
-                 Some(format!("data:image/png;base64,{}", b64))
+                let b64 = general_purpose::STANDARD.encode(&bytes);
+                Some(format!("data:image/png;base64,{}", b64))
             } else {
-                 None
+                None
             }
         } else {
             None
