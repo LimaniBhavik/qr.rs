@@ -4,7 +4,7 @@ pub mod generator;
 pub mod utils;
 
 pub use error::QRError;
-pub use formats::{ContactData, QRData};
+pub use formats::{ContactData, LocationData, QRData, WifiData, WifiEncryption};
 pub use generator::{QRBuilder, QRGenerator};
 
 // Re-export qrcode for convenience

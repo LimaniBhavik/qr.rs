@@ -28,6 +28,8 @@
     *   🔗 **URL**: Automatic protocol formatting (e.g., `example.com` -> `https://example.com`).
     *   📝 **Text**: Encode any arbitrary text.
     *   👤 **Contact**: Generate vCard 3.0 compatible QR codes for easy contact sharing.
+    *   📶 **Wifi**: Share Wi-Fi network credentials easily (WPA, WEP, Open).
+    *   📍 **Location**: Encode geographic coordinates (Latitude, Longitude).
 *   **🎨 Advanced Customization**:
     *   **Colors**: Custom foreground and background colors.
     *   **Error Correction**: Configurable levels (L, M, Q, H) to balance density and resilience.
@@ -186,7 +188,38 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-See the `examples/` directory for more detailed code samples.
+### Examples & Demos
+
+The `examples/` directory contains ready-to-run code samples for all features.
+
+#### Run the Comprehensive Demo
+To see all features in action, run the comprehensive demo. This will generate QR codes for URL, Text, Contact, Wifi, and Location in the `demo_output/` directory.
+
+```bash
+cargo run --example comprehensive_demo
+```
+
+#### Run Specific Examples
+*   **Basic Usage** (URL, Text, Contact):
+    ```bash
+    cargo run --example basic_usage
+    ```
+*   **Wifi QR Code**:
+    ```bash
+    cargo run --example wifi_qr
+    ```
+*   **Location QR Code**:
+    ```bash
+    cargo run --example location_qr
+    ```
+*   **Logo Embedding**:
+    ```bash
+    cargo run --example logo_qr
+    ```
+*   **Custom Colors**:
+    ```bash
+    cargo run --example custom_colors
+    ```
 
 ## 🤝 Contributing
 
