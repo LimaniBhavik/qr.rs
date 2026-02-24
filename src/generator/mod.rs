@@ -129,7 +129,7 @@ impl QRGenerator {
             // Calculate logo size (e.g., 20% of QR code size)
             let logo_size = (width as f32 * 0.2) as u32;
             let logo_resized =
-                logo_img.resize(logo_size, logo_size, image::imageops::FilterType::Lanczos3);
+                logo_img.resize(logo_size, logo_size, image::imageops::FilterType::Triangle);
 
             let x_offset = (width - logo_resized.width()) / 2;
             let y_offset = (height - logo_resized.height()) / 2;
