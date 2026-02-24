@@ -42,7 +42,7 @@ enum Commands {
         url: String,
         #[arg(short, long)]
         output: Option<PathBuf>,
-        #[arg(long, default_value = "H")]
+        #[arg(long, default_value = "h")]
         ec_level: EcLevel,
         #[arg(long)]
         foreground: Option<String>,
@@ -55,7 +55,7 @@ enum Commands {
         text: String,
         #[arg(short, long)]
         output: Option<PathBuf>,
-        #[arg(long, default_value = "H")]
+        #[arg(long, default_value = "h")]
         ec_level: EcLevel,
         #[arg(long)]
         foreground: Option<String>,
@@ -79,7 +79,7 @@ enum Commands {
         website: Option<String>,
         #[arg(short, long)]
         output: Option<PathBuf>,
-        #[arg(long, default_value = "H")]
+        #[arg(long, default_value = "h")]
         ec_level: EcLevel,
         #[arg(long)]
         foreground: Option<String>,
