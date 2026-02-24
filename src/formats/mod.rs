@@ -179,10 +179,10 @@ pub fn generate_vcard(contact: &ContactData) -> String {
 
 fn escape_wifi_string(s: &str) -> String {
     s.replace('\\', "\\\\")
-     .replace(';', "\\;")
-     .replace(',', "\\,")
-     .replace(':', "\\:")
-     .replace('"', "\\\"")
+        .replace(';', "\\;")
+        .replace(',', "\\,")
+        .replace(':', "\\:")
+        .replace('"', "\\\"")
 }
 
 pub fn generate_wifi(wifi: &WifiData) -> String {
@@ -355,7 +355,10 @@ mod tests {
         let wifi_string = generate_wifi(&wifi);
         // "My;Network" -> "My\;Network"
         // "pass\word:123" -> "pass\\word\:123"
-        assert_eq!(wifi_string, "WIFI:T:WPA;S:My\\;Network;P:pass\\\\word\\:123;H:false;;");
+        assert_eq!(
+            wifi_string,
+            "WIFI:T:WPA;S:My\\;Network;P:pass\\\\word\\:123;H:false;;"
+        );
     }
 
     #[test]
