@@ -1,6 +1,6 @@
 use crate::error::QRError;
-use std::sync::OnceLock;
 use regex::Regex;
+use std::sync::OnceLock;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct ContactData {
@@ -21,16 +21,16 @@ fn is_valid_email(email: &str) -> bool {
 
 fn is_valid_phone(phone: &str) -> bool {
     static PHONE_REGEX: OnceLock<Regex> = OnceLock::new();
-    PHONE_REGEX.get_or_init(|| {
-        Regex::new(r"^\+?[0-9\s\-()\.]{7,20}$").unwrap()
-    }).is_match(phone)
+    PHONE_REGEX
+        .get_or_init(|| Regex::new(r"^\+?[0-9\s\-()\.]{7,20}$").unwrap())
+        .is_match(phone)
 }
 
 fn is_valid_url(url: &str) -> bool {
     static URL_REGEX: OnceLock<Regex> = OnceLock::new();
-    URL_REGEX.get_or_init(|| {
-        Regex::new(r"^(https?://)?([\w\d-]+\.)+[\w\d-]+(/.*)?$").unwrap()
-    }).is_match(url)
+    URL_REGEX
+        .get_or_init(|| Regex::new(r"^(https?://)?([\w\d-]+\.)+[\w\d-]+(/.*)?$").unwrap())
+        .is_match(url)
 }
 
 impl ContactData {
