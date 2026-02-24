@@ -1,5 +1,5 @@
 use crate::error::QRError;
-use crate::formats::{format_url, generate_vcard, QRData};
+use crate::formats::{format_url, generate_geo_uri, generate_vcard, generate_wifi, QRData};
 use image::{DynamicImage, ImageFormat, Luma, Rgba, RgbaImage};
 use imageproc::drawing::draw_filled_rect_mut;
 use imageproc::rect::Rect;
@@ -45,6 +45,14 @@ impl QRBuilder {
 
     pub fn text(self, text: impl Into<String>) -> Self {
         self.data(QRData::Text(text.into()))
+    }
+
+    pub fn wifi(self, wifi: crate::formats::WifiData) -> Self {
+        self.data(QRData::Wifi(wifi))
+    }
+
+    pub fn location(self, location: crate::formats::LocationData) -> Self {
+        self.data(QRData::Location(location))
     }
 
     pub fn error_correction(mut self, level: qrcode::EcLevel) -> Self {
@@ -96,6 +104,14 @@ impl QRGenerator {
             QRData::Contact(contact) => {
                 contact.validate()?;
                 generate_vcard(contact)
+            }
+            QRData::Wifi(wifi) => {
+                wifi.validate()?;
+                generate_wifi(wifi)
+            }
+            QRData::Location(location) => {
+                location.validate()?;
+                generate_geo_uri(location)
             }
         };
 
@@ -200,6 +216,29 @@ mod tests {
             ..Default::default()
         };
         let generator = QRGenerator::new(QRData::Contact(contact));
+        let result = generator.generate();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_generate_wifi() {
+        let wifi = crate::formats::WifiData {
+            ssid: "TestNet".to_string(),
+            password: "pass".to_string(),
+            ..Default::default()
+        };
+        let generator = QRGenerator::new(QRData::Wifi(wifi));
+        let result = generator.generate();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_generate_location() {
+        let location = crate::formats::LocationData {
+            latitude: 34.0,
+            longitude: -118.0,
+        };
+        let generator = QRGenerator::new(QRData::Location(location));
         let result = generator.generate();
         assert!(result.is_ok());
     }

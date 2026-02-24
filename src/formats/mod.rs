@@ -13,6 +13,28 @@ pub struct ContactData {
     pub website: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub enum WifiEncryption {
+    #[default]
+    WPA,
+    WEP,
+    Nopass,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct WifiData {
+    pub ssid: String,
+    pub password: String,
+    pub encryption: WifiEncryption,
+    pub hidden: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct LocationData {
+    pub latitude: f64,
+    pub longitude: f64,
+}
+
 fn is_valid_email(email: &str) -> bool {
     static EMAIL_REGEX: OnceLock<Regex> = OnceLock::new();
     EMAIL_REGEX.get_or_init(|| {
@@ -74,11 +96,38 @@ impl ContactData {
     }
 }
 
+impl WifiData {
+    pub fn validate(&self) -> Result<(), QRError> {
+        if self.ssid.is_empty() {
+            return Err(QRError::InvalidData("SSID cannot be empty".to_string()));
+        }
+        Ok(())
+    }
+}
+
+impl LocationData {
+    pub fn validate(&self) -> Result<(), QRError> {
+        if self.latitude < -90.0 || self.latitude > 90.0 {
+            return Err(QRError::InvalidData(
+                "Latitude must be between -90 and 90".to_string(),
+            ));
+        }
+        if self.longitude < -180.0 || self.longitude > 180.0 {
+            return Err(QRError::InvalidData(
+                "Longitude must be between -180 and 180".to_string(),
+            ));
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum QRData {
     URL(String),
     Text(String),
     Contact(ContactData),
+    Wifi(WifiData),
+    Location(LocationData),
 }
 
 pub fn format_url(url: &str) -> String {
@@ -126,6 +175,34 @@ pub fn generate_vcard(contact: &ContactData) -> String {
 
     vcard.push("END:VCARD".to_string());
     vcard.join("\n")
+}
+
+fn escape_wifi_string(s: &str) -> String {
+    s.replace('\\', "\\\\")
+        .replace(';', "\\;")
+        .replace(',', "\\,")
+        .replace(':', "\\:")
+        .replace('"', "\\\"")
+}
+
+pub fn generate_wifi(wifi: &WifiData) -> String {
+    let encryption = match wifi.encryption {
+        WifiEncryption::WPA => "WPA",
+        WifiEncryption::WEP => "WEP",
+        WifiEncryption::Nopass => "nopass",
+    };
+    let hidden = if wifi.hidden { "true" } else { "false" };
+    format!(
+        "WIFI:T:{};S:{};P:{};H:{};;",
+        encryption,
+        escape_wifi_string(&wifi.ssid),
+        escape_wifi_string(&wifi.password),
+        hidden
+    )
+}
+
+pub fn generate_geo_uri(location: &LocationData) -> String {
+    format!("geo:{},{}", location.latitude, location.longitude)
 }
 
 // Tests
@@ -244,5 +321,74 @@ mod tests {
             ..contact.clone()
         };
         assert!(intl_phone.validate().is_ok());
+    }
+
+    #[test]
+    fn test_wifi_generation() {
+        let wifi = WifiData {
+            ssid: "MyNetwork".to_string(),
+            password: "mypassword".to_string(),
+            encryption: WifiEncryption::WPA,
+            hidden: false,
+        };
+        let wifi_string = generate_wifi(&wifi);
+        assert_eq!(wifi_string, "WIFI:T:WPA;S:MyNetwork;P:mypassword;H:false;;");
+
+        let wifi_nopass = WifiData {
+            ssid: "FreeWifi".to_string(),
+            password: "".to_string(),
+            encryption: WifiEncryption::Nopass,
+            hidden: true,
+        };
+        let wifi_nopass_string = generate_wifi(&wifi_nopass);
+        assert_eq!(wifi_nopass_string, "WIFI:T:nopass;S:FreeWifi;P:;H:true;;");
+    }
+
+    #[test]
+    fn test_wifi_escaping() {
+        let wifi = WifiData {
+            ssid: "My;Network".to_string(),
+            password: "pass\\word:123".to_string(),
+            encryption: WifiEncryption::WPA,
+            hidden: false,
+        };
+        let wifi_string = generate_wifi(&wifi);
+        // "My;Network" -> "My\;Network"
+        // "pass\word:123" -> "pass\\word\:123"
+        assert_eq!(
+            wifi_string,
+            "WIFI:T:WPA;S:My\\;Network;P:pass\\\\word\\:123;H:false;;"
+        );
+    }
+
+    #[test]
+    fn test_location_generation() {
+        let location = LocationData {
+            latitude: 40.7128,
+            longitude: -74.0060,
+        };
+        let geo_uri = generate_geo_uri(&location);
+        assert_eq!(geo_uri, "geo:40.7128,-74.006");
+    }
+
+    #[test]
+    fn test_location_validation() {
+        let valid_location = LocationData {
+            latitude: 45.0,
+            longitude: 90.0,
+        };
+        assert!(valid_location.validate().is_ok());
+
+        let invalid_lat = LocationData {
+            latitude: 91.0,
+            longitude: 0.0,
+        };
+        assert!(invalid_lat.validate().is_err());
+
+        let invalid_lon = LocationData {
+            latitude: 0.0,
+            longitude: -181.0,
+        };
+        assert!(invalid_lon.validate().is_err());
     }
 }

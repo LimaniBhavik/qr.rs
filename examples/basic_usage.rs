@@ -1,20 +1,23 @@
 use qr_rs::error::QRError;
 use qr_rs::{ContactData, QRBuilder};
+use std::fs;
 
 fn main() -> Result<(), QRError> {
     // Generate URL QR code
-    QRBuilder::new()
+    let url_png = QRBuilder::new()
         .url("https://example.com")
         .build()?
         .to_png(300, None)?;
-    println!("Generated URL QR code");
+    fs::write("basic_url.png", url_png)?;
+    println!("Generated basic_url.png");
 
     // Generate Text QR code
-    QRBuilder::new()
+    let text_png = QRBuilder::new()
         .text("Hello World")
         .build()?
         .to_png(300, None)?;
-    println!("Generated Text QR code");
+    fs::write("basic_text.png", text_png)?;
+    println!("Generated basic_text.png");
 
     // Generate Contact QR code
     let contact = ContactData {
@@ -25,11 +28,12 @@ fn main() -> Result<(), QRError> {
         ..Default::default()
     };
 
-    QRBuilder::new()
+    let contact_png = QRBuilder::new()
         .data(qr_rs::QRData::Contact(contact))
         .build()?
         .to_png(300, None)?;
-    println!("Generated Contact QR code");
+    fs::write("basic_contact.png", contact_png)?;
+    println!("Generated basic_contact.png");
 
     Ok(())
 }
