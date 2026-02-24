@@ -1,6 +1,6 @@
 use crate::error::QRError;
-use std::sync::OnceLock;
 use regex::Regex;
+use std::sync::OnceLock;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct ContactData {
@@ -15,22 +15,22 @@ pub struct ContactData {
 fn is_valid_email(email: &str) -> bool {
     static EMAIL_REGEX: OnceLock<Regex> = OnceLock::new();
     EMAIL_REGEX.get_or_init(|| {
-        Regex::new(r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$").unwrap()
+        Regex::new(r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$").unwrap()
     }).is_match(email)
 }
 
 fn is_valid_phone(phone: &str) -> bool {
     static PHONE_REGEX: OnceLock<Regex> = OnceLock::new();
-    PHONE_REGEX.get_or_init(|| {
-        Regex::new(r"^\+?[0-9\s\-()\.]{7,20}$").unwrap()
-    }).is_match(phone)
+    PHONE_REGEX
+        .get_or_init(|| Regex::new(r"^\+?[0-9\s\-()\.]{7,20}$").unwrap())
+        .is_match(phone)
 }
 
 fn is_valid_url(url: &str) -> bool {
     static URL_REGEX: OnceLock<Regex> = OnceLock::new();
-    URL_REGEX.get_or_init(|| {
-        Regex::new(r"^(https?://)?([\w\d-]+\.)+[\w\d-]+(/.*)?$").unwrap()
-    }).is_match(url)
+    URL_REGEX
+        .get_or_init(|| Regex::new(r"^(https?://)?([\w\d-]+\.)+[\w\d-]+(/.*)?$").unwrap())
+        .is_match(url)
 }
 
 impl ContactData {
@@ -154,6 +154,35 @@ mod tests {
         assert!(vcard.contains("BEGIN:VCARD"));
         assert!(vcard.contains("FN:John Doe"));
         assert!(vcard.contains("URL:https://example.com"));
+    }
+
+    #[test]
+    fn test_is_valid_email() {
+        // Valid emails
+        assert!(is_valid_email("user@example.com"));
+        assert!(is_valid_email("user.name@example.com"));
+        assert!(is_valid_email("user+tag@example.com"));
+        assert!(is_valid_email("user@sub.example.com"));
+        assert!(is_valid_email("user@example.co.uk"));
+        assert!(is_valid_email("1234567890@example.com"));
+        assert!(is_valid_email("user@example-one.com"));
+        assert!(is_valid_email("_______@example.com"));
+        assert!(is_valid_email("u@example.com"));
+
+        // Invalid emails
+        assert!(!is_valid_email("plainaddress"));
+        assert!(!is_valid_email("@example.com"));
+        assert!(!is_valid_email("Joe Smith <email@example.com>"));
+        assert!(!is_valid_email("email.example.com"));
+        assert!(!is_valid_email("email@example@example.com"));
+        assert!(!is_valid_email(".email@example.com"));
+        assert!(!is_valid_email("email.@example.com"));
+        assert!(!is_valid_email("email..email@example.com"));
+        assert!(!is_valid_email("あいうえお@example.com"));
+        assert!(!is_valid_email("email@example.com (Joe Smith)"));
+        assert!(!is_valid_email("email@-example.com"));
+        assert!(!is_valid_email("email@example..com"));
+        assert!(!is_valid_email("Abc..123@example.com"));
     }
 
     #[test]
