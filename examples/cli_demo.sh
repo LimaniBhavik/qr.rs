@@ -21,7 +21,15 @@ echo "Generated red_text.png"
 $QR_CLI "High Security" -o high_ec.png --error-correction-level high --scale 50
 echo "Generated high_ec.png"
 
-# 4. Force Overwrite
+# 4. Low Error Correction (Explicit check for 'low')
+$QR_CLI "Low Security" -o low_ec.png --error-correction-level low
+echo "Generated low_ec.png"
+
+# 5. Quartile Error Correction (Explicit check for 'quartile')
+$QR_CLI "Quartile Security" -o quartile_ec.png -l quartile
+echo "Generated quartile_ec.png"
+
+# 6. Force Overwrite
 touch overwrite_me.png
 $QR_CLI "Overwrite" -o overwrite_me.png --force
 echo "Generated overwrite_me.png (forced)"
