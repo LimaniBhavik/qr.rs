@@ -240,6 +240,11 @@ mod tests {
         assert!(is_valid_email("user@example.com"));
         assert!(is_valid_email("user.name@example.com"));
         assert!(is_valid_email("user+tag@example.com"));
+        assert!(is_valid_email("user.name@sub.domain.co.uk"));
+        assert!(is_valid_email("user-name@example.com"));
+        assert!(is_valid_email("user_name@example.com"));
+        assert!(is_valid_email("user@localhost"));
+        assert!(is_valid_email("user@123.123.123.123"));
         assert!(is_valid_email("user@sub.example.com"));
         assert!(is_valid_email("user@example.co.uk"));
         assert!(is_valid_email("1234567890@example.com"));
@@ -256,6 +261,10 @@ mod tests {
         assert!(!is_valid_email(".email@example.com"));
         assert!(!is_valid_email("email.@example.com"));
         assert!(!is_valid_email("email..email@example.com"));
+        assert!(!is_valid_email("user..name@example.com"));
+        assert!(!is_valid_email("user@.example.com"));
+        assert!(!is_valid_email("user@example.com."));
+        assert!(!is_valid_email("user@example_domain.com"));
         assert!(!is_valid_email("あいうえお@example.com"));
         assert!(!is_valid_email("email@example.com (Joe Smith)"));
         assert!(!is_valid_email("email@-example.com"));
