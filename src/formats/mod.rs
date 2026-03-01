@@ -145,32 +145,47 @@ pub fn format_url(url: &str) -> String {
     }
 }
 
+fn escape_vcard_string(s: &str) -> String {
+    s.replace('\\', "\\\\")
+        .replace(',', "\\,")
+        .replace(';', "\\;")
+        .replace(':', "\\:")
+}
+
 pub fn generate_vcard(contact: &ContactData) -> String {
     let mut vcard = vec!["BEGIN:VCARD".to_string(), "VERSION:3.0".to_string()];
 
     if !contact.first_name.is_empty() || !contact.last_name.is_empty() {
+        let first_name = escape_vcard_string(&contact.first_name);
+        let last_name = escape_vcard_string(&contact.last_name);
         vcard.push(
-            format!("FN:{} {}", contact.first_name, contact.last_name)
+            format!("FN:{} {}", first_name, last_name)
                 .trim()
                 .to_string(),
         );
-        vcard.push(format!("N:{};{};;;", contact.last_name, contact.first_name));
+        vcard.push(format!("N:{};{};;;", last_name, first_name));
     }
 
     if !contact.organization.is_empty() {
-        vcard.push(format!("ORG:{}", contact.organization));
+        vcard.push(format!(
+            "ORG:{}",
+            escape_vcard_string(&contact.organization)
+        ));
     }
 
     if !contact.phone.is_empty() {
-        vcard.push(format!("TEL:{}", contact.phone));
+        vcard.push(format!("TEL:{}", escape_vcard_string(&contact.phone)));
     }
 
     if !contact.email.is_empty() {
-        vcard.push(format!("EMAIL:{}", contact.email));
+        vcard.push(format!("EMAIL:{}", escape_vcard_string(&contact.email)));
     }
 
     if !contact.website.is_empty() {
-        vcard.push(format!("URL:{}", format_url(&contact.website)));
+        vcard.push(format!(
+            "URL:{}",
+            escape_vcard_string(&format_url(&contact.website))
+        ));
     }
 
     vcard.push("END:VCARD".to_string());
@@ -231,7 +246,26 @@ mod tests {
         let vcard = generate_vcard(&contact);
         assert!(vcard.contains("BEGIN:VCARD"));
         assert!(vcard.contains("FN:John Doe"));
-        assert!(vcard.contains("URL:https://example.com"));
+        assert!(vcard.contains("URL:https\\://example.com"));
+    }
+
+    #[test]
+    fn test_vcard_escaping() {
+        let contact = ContactData {
+            first_name: "John, Jr.".to_string(),
+            last_name: "Doe;Smith".to_string(),
+            email: "john:smith@example.com".to_string(),
+            phone: "+1234567890".to_string(),
+            organization: "ACME\\Corp".to_string(),
+            website: "example.com".to_string(),
+        };
+
+        let vcard = generate_vcard(&contact);
+        assert!(vcard.contains("BEGIN:VCARD"));
+        assert!(vcard.contains("FN:John\\, Jr. Doe\\;Smith"));
+        assert!(vcard.contains("N:Doe\\;Smith;John\\, Jr.;;;"));
+        assert!(vcard.contains("ORG:ACME\\\\Corp"));
+        assert!(vcard.contains("EMAIL:john\\:smith@example.com"));
     }
 
     #[test]
