@@ -236,7 +236,7 @@ mod tests {
 
     #[test]
     fn test_is_valid_email() {
-        // Valid emails
+        // Valid emails - Standard
         assert!(is_valid_email("user@example.com"));
         assert!(is_valid_email("user.name@example.com"));
         assert!(is_valid_email("user+tag@example.com"));
@@ -247,20 +247,65 @@ mod tests {
         assert!(is_valid_email("_______@example.com"));
         assert!(is_valid_email("u@example.com"));
 
-        // Invalid emails
+        // Valid emails - Edge cases (Complex characters in local part)
+        assert!(is_valid_email("!#$%&'*+-/=?^_`{|}~@example.com"));
+        assert!(is_valid_email("user-name@example.com"));
+        assert!(is_valid_email("user_name@example.com"));
+        assert!(is_valid_email("user%name@example.com"));
+
+        // Valid emails - Edge cases (Domain segments length)
+        // 63 character domain segment
+        let long_domain = format!("user@{}.com", "a".repeat(63));
+        assert!(is_valid_email(&long_domain));
+
+        // Complex multi-subdomains
+        assert!(is_valid_email("user.name.with.dots@sub.domain.co.uk"));
+        assert!(is_valid_email("user@sub.sub.sub.domain.com"));
+
+        // Invalid emails - Missing parts
         assert!(!is_valid_email("plainaddress"));
         assert!(!is_valid_email("@example.com"));
-        assert!(!is_valid_email("Joe Smith <email@example.com>"));
         assert!(!is_valid_email("email.example.com"));
+        assert!(!is_valid_email("email@"));
+        assert!(!is_valid_email("user@.com"));
+
+        // Invalid emails - Structure/Syntax issues
         assert!(!is_valid_email("email@example@example.com"));
+        assert!(!is_valid_email("Joe Smith <email@example.com>"));
+        assert!(!is_valid_email("email@example.com (Joe Smith)"));
+        assert!(!is_valid_email("あいうえお@example.com")); // Non-ASCII
+
+        // Invalid emails - Consecutive or leading/trailing dots
         assert!(!is_valid_email(".email@example.com"));
         assert!(!is_valid_email("email.@example.com"));
         assert!(!is_valid_email("email..email@example.com"));
-        assert!(!is_valid_email("あいうえお@example.com"));
-        assert!(!is_valid_email("email@example.com (Joe Smith)"));
-        assert!(!is_valid_email("email@-example.com"));
         assert!(!is_valid_email("email@example..com"));
         assert!(!is_valid_email("Abc..123@example.com"));
+
+        // Invalid emails - Hyphen position in domain
+        assert!(!is_valid_email("email@-example.com"));
+        assert!(!is_valid_email("email@example-.com"));
+        assert!(!is_valid_email("email@example.-com"));
+        assert!(!is_valid_email("email@example.com-"));
+
+        // Invalid emails - Domain segments length
+        // 64 character domain segment (exceeds the maximum 63 permitted by the regex length limit {0,61})
+        // "a" + 62 times "a" + "a" = 64 characters. Limit is "a" + {0,61} + "a" = 63 max characters.
+        let too_long_domain = format!("user@{}.com", "a".repeat(64));
+        assert!(!is_valid_email(&too_long_domain));
+
+        // Invalid emails - Spaces
+        assert!(!is_valid_email(" user@example.com"));
+        assert!(!is_valid_email("user @example.com"));
+        assert!(!is_valid_email("user@ example.com"));
+        assert!(!is_valid_email("user@example.com "));
+        assert!(!is_valid_email("user name@example.com"));
+        assert!(!is_valid_email("user@exam ple.com"));
+
+        // Invalid emails - Quotes (current regex does not permit quotes)
+        assert!(!is_valid_email("\"user\"@example.com"));
+        assert!(!is_valid_email("\"user.name\"@example.com"));
+        assert!(!is_valid_email("\" \"@example.com"));
     }
 
     #[test]
