@@ -191,6 +191,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Industry Case Studies
 See how `qr.rs` can be applied across different industries:
 *   [Retail & E-commerce](docs/case_studies/01_retail_ecommerce.md) - Bulk product tag generation.
+*   [Real Estate](docs/case_studies/02_real_estate.md) - Dynamic property listings.
+*   [Hospitality & Restaurants](docs/case_studies/03_hospitality.md) - Table menu generation.
+*   [Events & Ticketing](docs/case_studies/04_events.md) - High-throughput ticket generation.
+*   [Healthcare](docs/case_studies/05_healthcare.md) - Patient vCard bracelets.
+*   [Education](docs/case_studies/06_education.md) - Smartboard resource sharing.
+*   [IT & Networking](docs/case_studies/07_it_networking.md) - Guest WiFi networks.
+*   [Logistics & Shipping](docs/case_studies/08_logistics.md) - Package tracking labels.
+*   [Marketing](docs/case_studies/09_marketing.md) - Branded campaign URLs.
+*   [Tourism](docs/case_studies/10_tourism.md) - Geo URI trail markers.
+*   [Automotive](docs/case_studies/11_automotive.md) - VIN history lookups.
+*   [Manufacturing](docs/case_studies/12_manufacturing.md) - Equipment manuals.
+*   [Finance & Banking](docs/case_studies/13_finance.md) - Crypto addresses.
+*   [Human Resources](docs/case_studies/14_human_resources.md) - Digital business cards.
+*   [Agriculture](docs/case_studies/15_agriculture.md) - Produce origin tracking.
+*   [Construction](docs/case_studies/16_construction.md) - Blueprint access links.
+*   [Entertainment](docs/case_studies/17_entertainment.md) - Movie trailer deep-links.
+*   [Government/Public Sector](docs/case_studies/18_government.md) - 311 Service reporting.
+*   [Fitness & Gyms](docs/case_studies/19_fitness.md) - Instructional videos.
+*   [Legal](docs/case_studies/20_legal.md) - Document verification hashes.
 
 ### Examples & Demos
 
