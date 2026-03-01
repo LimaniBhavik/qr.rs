@@ -188,6 +188,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+### Industry Case Studies
+See how `qr.rs` can be applied across different industries:
+*   [Retail & E-commerce](docs/case_studies/01_retail_ecommerce.md) - Bulk product tag generation.
+
 ### Examples & Demos
 
 The `examples/` directory contains ready-to-run code samples for all features.
