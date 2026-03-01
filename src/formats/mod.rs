@@ -239,6 +239,7 @@ mod tests {
         // Valid emails
         assert!(is_valid_email("user@example.com"));
         assert!(is_valid_email("user.name@example.com"));
+        assert!(is_valid_email("user.name@sub.domain.co.uk")); // Added from issue description
         assert!(is_valid_email("user+tag@example.com"));
         assert!(is_valid_email("user@sub.example.com"));
         assert!(is_valid_email("user@example.co.uk"));
@@ -246,6 +247,11 @@ mod tests {
         assert!(is_valid_email("user@example-one.com"));
         assert!(is_valid_email("_______@example.com"));
         assert!(is_valid_email("u@example.com"));
+        assert!(is_valid_email("user.name.with.dots@example.com"));
+        assert!(is_valid_email("user-name@example.com"));
+        assert!(is_valid_email("user_name@example.com"));
+        assert!(is_valid_email("user!name@example.com"));
+        assert!(is_valid_email("user#name@example.com"));
 
         // Invalid emails
         assert!(!is_valid_email("plainaddress"));
@@ -253,14 +259,19 @@ mod tests {
         assert!(!is_valid_email("Joe Smith <email@example.com>"));
         assert!(!is_valid_email("email.example.com"));
         assert!(!is_valid_email("email@example@example.com"));
-        assert!(!is_valid_email(".email@example.com"));
-        assert!(!is_valid_email("email.@example.com"));
-        assert!(!is_valid_email("email..email@example.com"));
+        assert!(!is_valid_email(".email@example.com")); // Leading dot in local part
+        assert!(!is_valid_email("email.@example.com")); // Trailing dot in local part
+        assert!(!is_valid_email("email..email@example.com")); // Consecutive dots in local part
         assert!(!is_valid_email("あいうえお@example.com"));
         assert!(!is_valid_email("email@example.com (Joe Smith)"));
         assert!(!is_valid_email("email@-example.com"));
-        assert!(!is_valid_email("email@example..com"));
+        assert!(!is_valid_email("email@example..com")); // Consecutive dots in domain
         assert!(!is_valid_email("Abc..123@example.com"));
+        assert!(!is_valid_email("user name@example.com")); // Space in local part
+        assert!(!is_valid_email("user@example com")); // Space in domain
+        assert!(!is_valid_email("user@")); // Missing domain
+        assert!(!is_valid_email("user@.com")); // Missing domain name
+        assert!(!is_valid_email("user@example.")); // Trailing dot in domain
     }
 
     #[test]
