@@ -264,4 +264,16 @@ mod tests {
             assert!(result.is_ok(), "Failed for EC level {:?}", level);
         }
     }
+
+    #[test]
+    fn test_builder_missing_data_error() {
+        let builder = QRBuilder::new();
+        let result = builder.build();
+
+        assert!(result.is_err());
+        match result {
+            Err(QRError::InvalidData(msg)) => assert_eq!(msg, "No data provided"),
+            _ => panic!("Expected QRError::InvalidData"),
+        }
+    }
 }
