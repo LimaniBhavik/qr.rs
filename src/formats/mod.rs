@@ -145,32 +145,47 @@ pub fn format_url(url: &str) -> String {
     }
 }
 
+fn escape_vcard_string(s: &str) -> String {
+    s.replace('\\', "\\\\")
+        .replace(',', "\\,")
+        .replace(';', "\\;")
+        .replace(':', "\\:")
+}
+
 pub fn generate_vcard(contact: &ContactData) -> String {
     let mut vcard = vec!["BEGIN:VCARD".to_string(), "VERSION:3.0".to_string()];
 
     if !contact.first_name.is_empty() || !contact.last_name.is_empty() {
+        let first_name = escape_vcard_string(&contact.first_name);
+        let last_name = escape_vcard_string(&contact.last_name);
         vcard.push(
-            format!("FN:{} {}", contact.first_name, contact.last_name)
+            format!("FN:{} {}", first_name, last_name)
                 .trim()
                 .to_string(),
         );
-        vcard.push(format!("N:{};{};;;", contact.last_name, contact.first_name));
+        vcard.push(format!("N:{};{};;;", last_name, first_name));
     }
 
     if !contact.organization.is_empty() {
-        vcard.push(format!("ORG:{}", contact.organization));
+        vcard.push(format!(
+            "ORG:{}",
+            escape_vcard_string(&contact.organization)
+        ));
     }
 
     if !contact.phone.is_empty() {
-        vcard.push(format!("TEL:{}", contact.phone));
+        vcard.push(format!("TEL:{}", escape_vcard_string(&contact.phone)));
     }
 
     if !contact.email.is_empty() {
-        vcard.push(format!("EMAIL:{}", contact.email));
+        vcard.push(format!("EMAIL:{}", escape_vcard_string(&contact.email)));
     }
 
     if !contact.website.is_empty() {
-        vcard.push(format!("URL:{}", format_url(&contact.website)));
+        vcard.push(format!(
+            "URL:{}",
+            escape_vcard_string(&format_url(&contact.website))
+        ));
     }
 
     vcard.push("END:VCARD".to_string());
@@ -231,21 +246,62 @@ mod tests {
         let vcard = generate_vcard(&contact);
         assert!(vcard.contains("BEGIN:VCARD"));
         assert!(vcard.contains("FN:John Doe"));
-        assert!(vcard.contains("URL:https://example.com"));
+        assert!(vcard.contains("URL:https\\://example.com"));
+    }
+
+    #[test]
+    fn test_vcard_escaping() {
+        let contact = ContactData {
+            first_name: "John, Jr.".to_string(),
+            last_name: "Doe;Smith".to_string(),
+            email: "john:smith@example.com".to_string(),
+            phone: "+1234567890".to_string(),
+            organization: "ACME\\Corp".to_string(),
+            website: "example.com".to_string(),
+        };
+
+        let vcard = generate_vcard(&contact);
+        assert!(vcard.contains("BEGIN:VCARD"));
+        assert!(vcard.contains("FN:John\\, Jr. Doe\\;Smith"));
+        assert!(vcard.contains("N:Doe\\;Smith;John\\, Jr.;;;"));
+        assert!(vcard.contains("ORG:ACME\\\\Corp"));
+        assert!(vcard.contains("EMAIL:john\\:smith@example.com"));
     }
 
     #[test]
     fn test_is_valid_email() {
         // Valid emails - Standard
+        // Standard valid emails
         assert!(is_valid_email("user@example.com"));
         assert!(is_valid_email("user.name@example.com"));
+        assert!(is_valid_email("user.name@sub.domain.co.uk")); // Added from issue description
         assert!(is_valid_email("user+tag@example.com"));
+        assert!(is_valid_email("user.name@sub.domain.co.uk"));
+        assert!(is_valid_email("user-name@example.com"));
+        assert!(is_valid_email("user_name@example.com"));
+        assert!(is_valid_email("user@localhost"));
+        assert!(is_valid_email("user@123.123.123.123"));
         assert!(is_valid_email("user@sub.example.com"));
         assert!(is_valid_email("user@example.co.uk"));
         assert!(is_valid_email("1234567890@example.com"));
         assert!(is_valid_email("user@example-one.com"));
         assert!(is_valid_email("_______@example.com"));
         assert!(is_valid_email("u@example.com"));
+        assert!(is_valid_email("user.name.with.dots@example.com"));
+        assert!(is_valid_email("user-name@example.com"));
+        assert!(is_valid_email("user_name@example.com"));
+        assert!(is_valid_email("user!name@example.com"));
+        assert!(is_valid_email("user#name@example.com"));
+
+        // Extended valid edge cases
+        assert!(is_valid_email("user.name@sub.domain.co.uk"));
+        assert!(is_valid_email("valid-local-part@domain.com"));
+        assert!(is_valid_email("valid_local_part@domain.com"));
+        assert!(is_valid_email("12345678901234567890@example.com"));
+        assert!(is_valid_email("user@a.com")); // short domain
+        assert!(is_valid_email("user@domain.solutions")); // long TLD
+        assert!(is_valid_email("user@domain-with-dash.com")); // domain with dash
+        assert!(is_valid_email("a@b.c")); // extremely short
 
         // Valid emails - Edge cases (Complex characters in local part)
         assert!(is_valid_email("!#$%&'*+-/=?^_`{|}~@example.com"));
@@ -306,6 +362,51 @@ mod tests {
         assert!(!is_valid_email("\"user\"@example.com"));
         assert!(!is_valid_email("\"user.name\"@example.com"));
         assert!(!is_valid_email("\" \"@example.com"));
+        assert!(!is_valid_email("user..name@example.com"));
+        assert!(!is_valid_email("user@.example.com"));
+        assert!(!is_valid_email("user@example.com."));
+        assert!(!is_valid_email("user@example_domain.com"));
+        assert!(!is_valid_email(".email@example.com")); // Leading dot in local part
+        assert!(!is_valid_email("email.@example.com")); // Trailing dot in local part
+        assert!(!is_valid_email("email..email@example.com")); // Consecutive dots in local part
+        assert!(!is_valid_email("あいうえお@example.com"));
+        assert!(!is_valid_email("email@example.com (Joe Smith)"));
+        assert!(!is_valid_email("email@-example.com"));
+        assert!(!is_valid_email("email@example..com")); // Consecutive dots in domain
+        assert!(!is_valid_email("Abc..123@example.com"));
+        assert!(!is_valid_email("user name@example.com")); // Space in local part
+        assert!(!is_valid_email("user@example com")); // Space in domain
+        assert!(!is_valid_email("user@")); // Missing domain
+        assert!(!is_valid_email("user@.com")); // Missing domain name
+        assert!(!is_valid_email("user@example.")); // Trailing dot in domain
+
+        // Extended invalid edge cases
+        assert!(!is_valid_email("")); // empty
+        assert!(!is_valid_email(" ")); // whitespace
+        assert!(!is_valid_email("user@")); // missing domain
+        assert!(!is_valid_email("user@.com")); // domain starts with dot
+        assert!(!is_valid_email("user@domain.com.")); // domain ends with dot
+        assert!(!is_valid_email("user@domain..com")); // consecutive dots in domain
+        assert!(!is_valid_email("user@do_main.com")); // underscore in domain
+        assert!(!is_valid_email(".user@domain.com")); // leading dot in local part
+        assert!(!is_valid_email("user.@domain.com")); // trailing dot in local part
+        assert!(!is_valid_email("user..name@domain.com")); // consecutive dots in local part
+        assert!(!is_valid_email("user@domain.-com")); // TLD starts with dash
+        assert!(!is_valid_email("user@domain.com-")); // TLD ends with dash
+        assert!(!is_valid_email("user@domain-.com")); // Domain ends with dash
+        assert!(!is_valid_email("user@-domain.com")); // Domain starts with dash
+
+        // very long local part (assuming 64 chars limit isn't strictly enforced by the regex but let's see,
+        // actually the current regex doesn't seem to bound the local part length.
+        // It does bound domain labels to 63 chars `{0,61}` inside `(?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?`
+
+        // Valid length label
+        let valid_label = "a".repeat(63);
+        assert!(is_valid_email(&format!("user@{}.com", valid_label)));
+
+        // Invalid length label (> 63 characters)
+        let invalid_label = "a".repeat(64);
+        assert!(!is_valid_email(&format!("user@{}.com", invalid_label)));
     }
 
     #[test]
