@@ -544,4 +544,29 @@ mod tests {
         };
         assert!(invalid_lon.validate().is_err());
     }
+
+    #[test]
+    fn test_is_valid_url() {
+        // Valid URLs
+        assert!(is_valid_url("https://example.com"));
+        assert!(is_valid_url("http://example.com"));
+        assert!(is_valid_url("example.com"));
+        assert!(is_valid_url("www.example.com"));
+        assert!(is_valid_url("sub.example.com"));
+        assert!(is_valid_url("example.com/path"));
+        assert!(is_valid_url("example.com/path?query=1"));
+        assert!(is_valid_url("example.com/path#fragment"));
+        assert!(is_valid_url("127.0.0.1"));
+        assert!(is_valid_url("my-domain.com"));
+
+        // Invalid URLs
+        assert!(!is_valid_url("ftp://example.com")); // only http/https or no protocol
+        assert!(!is_valid_url("http:/example.com"));
+        assert!(!is_valid_url("https//example.com"));
+        assert!(!is_valid_url(".example.com"));
+        assert!(!is_valid_url("example."));
+        assert!(!is_valid_url("http://"));
+        assert!(!is_valid_url("localhost")); // currently regex requires at least one dot
+        assert!(!is_valid_url(""));
+    }
 }
