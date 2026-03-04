@@ -72,7 +72,7 @@ impl QRBuilder {
         }
 
         Ok(QRGenerator {
-            data: self.data.expect("Data should be present after validation"),
+            data: self.data.expect("data should be checked for None before calling unwrap"),
             error_correction: self.error_correction,
             foreground_color: self.foreground_color,
             background_color: self.background_color,
@@ -259,7 +259,7 @@ mod tests {
                 .data(data.clone())
                 .error_correction(level)
                 .build()
-                .unwrap();
+                .expect("QRBuilder should build successfully with valid data");
             let result = generator.generate();
             assert!(result.is_ok(), "Failed for EC level {:?}", level);
         }

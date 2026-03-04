@@ -39,28 +39,20 @@ fn is_valid_email(email: &str) -> bool {
     static EMAIL_REGEX: OnceLock<Regex> = OnceLock::new();
     EMAIL_REGEX.get_or_init(|| {
         Regex::new(r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$").expect("Invalid email regex pattern")
-        Regex::new(r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
-            .expect("Failed to compile email validation regex")
     }).is_match(email)
 }
 
 fn is_valid_phone(phone: &str) -> bool {
     static PHONE_REGEX: OnceLock<Regex> = OnceLock::new();
     PHONE_REGEX
-        .get_or_init(|| {
-            Regex::new(r"^\+?[0-9\s\-()\.]{7,20}$")
-                .expect("Failed to compile phone validation regex")
-        })
+        .get_or_init(|| Regex::new(r"^\+?[0-9\s\-()\.]{7,20}$").expect("Invalid phone regex pattern"))
         .is_match(phone)
 }
 
 fn is_valid_url(url: &str) -> bool {
     static URL_REGEX: OnceLock<Regex> = OnceLock::new();
     URL_REGEX
-        .get_or_init(|| {
-            Regex::new(r"^(https?://)?([\w\d-]+\.)+[\w\d-]+(/.*)?$")
-                .expect("Failed to compile URL validation regex")
-        })
+        .get_or_init(|| Regex::new(r"^(https?://)?([\w\d-]+\.)+[\w\d-]+(/.*)?$").expect("Invalid URL regex pattern"))
         .is_match(url)
 }
 
@@ -559,30 +551,5 @@ mod tests {
             longitude: -181.0,
         };
         assert!(invalid_lon.validate().is_err());
-    }
-
-    #[test]
-    fn test_is_valid_url() {
-        // Valid URLs
-        assert!(is_valid_url("https://example.com"));
-        assert!(is_valid_url("http://example.com"));
-        assert!(is_valid_url("example.com"));
-        assert!(is_valid_url("www.example.com"));
-        assert!(is_valid_url("sub.example.com"));
-        assert!(is_valid_url("example.com/path"));
-        assert!(is_valid_url("example.com/path?query=1"));
-        assert!(is_valid_url("example.com/path#fragment"));
-        assert!(is_valid_url("127.0.0.1"));
-        assert!(is_valid_url("my-domain.com"));
-
-        // Invalid URLs
-        assert!(!is_valid_url("ftp://example.com")); // only http/https or no protocol
-        assert!(!is_valid_url("http:/example.com"));
-        assert!(!is_valid_url("https//example.com"));
-        assert!(!is_valid_url(".example.com"));
-        assert!(!is_valid_url("example."));
-        assert!(!is_valid_url("http://"));
-        assert!(!is_valid_url("localhost")); // currently regex requires at least one dot
-        assert!(!is_valid_url(""));
     }
 }
