@@ -72,7 +72,7 @@ impl QRBuilder {
         }
 
         Ok(QRGenerator {
-            data: self.data.unwrap(),
+            data: self.data.expect("Data should be present after validation"),
             error_correction: self.error_correction,
             foreground_color: self.foreground_color,
             background_color: self.background_color,
