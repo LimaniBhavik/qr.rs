@@ -145,51 +145,66 @@ pub fn format_url(url: &str) -> String {
     }
 }
 
-fn escape_vcard_string(s: &str) -> String {
-    s.replace('\\', "\\\\")
-        .replace(',', "\\,")
-        .replace(';', "\\;")
-        .replace(':', "\\:")
+fn escape_vcard_value_to(s: &str, out: &mut String) {
+    for c in s.chars() {
+        match c {
+            '\\' => out.push_str("\\\\"),
+            ',' => out.push_str("\\,"),
+            ';' => out.push_str("\\;"),
+            ':' => out.push_str("\\:"),
+            _ => out.push(c),
+        }
+    }
 }
 
 pub fn generate_vcard(contact: &ContactData) -> String {
-    let mut vcard = vec!["BEGIN:VCARD".to_string(), "VERSION:3.0".to_string()];
+    let mut vcard = String::with_capacity(256);
+    vcard.push_str("BEGIN:VCARD\nVERSION:3.0\n");
 
     if !contact.first_name.is_empty() || !contact.last_name.is_empty() {
-        let first_name = escape_vcard_string(&contact.first_name);
-        let last_name = escape_vcard_string(&contact.last_name);
-        vcard.push(
-            format!("FN:{} {}", first_name, last_name)
-                .trim()
-                .to_string(),
-        );
-        vcard.push(format!("N:{};{};;;", last_name, first_name));
+        vcard.push_str("FN:");
+        escape_vcard_value_to(&contact.first_name, &mut vcard);
+        vcard.push(' ');
+        escape_vcard_value_to(&contact.last_name, &mut vcard);
+
+        if vcard.ends_with(' ') {
+            vcard.pop();
+        }
+        vcard.push('\n');
+
+        vcard.push_str("N:");
+        escape_vcard_value_to(&contact.last_name, &mut vcard);
+        vcard.push(';');
+        escape_vcard_value_to(&contact.first_name, &mut vcard);
+        vcard.push_str(";;;\n");
     }
 
     if !contact.organization.is_empty() {
-        vcard.push(format!(
-            "ORG:{}",
-            escape_vcard_string(&contact.organization)
-        ));
+        vcard.push_str("ORG:");
+        escape_vcard_value_to(&contact.organization, &mut vcard);
+        vcard.push('\n');
     }
 
     if !contact.phone.is_empty() {
-        vcard.push(format!("TEL:{}", escape_vcard_string(&contact.phone)));
+        vcard.push_str("TEL:");
+        escape_vcard_value_to(&contact.phone, &mut vcard);
+        vcard.push('\n');
     }
 
     if !contact.email.is_empty() {
-        vcard.push(format!("EMAIL:{}", escape_vcard_string(&contact.email)));
+        vcard.push_str("EMAIL:");
+        escape_vcard_value_to(&contact.email, &mut vcard);
+        vcard.push('\n');
     }
 
     if !contact.website.is_empty() {
-        vcard.push(format!(
-            "URL:{}",
-            escape_vcard_string(&format_url(&contact.website))
-        ));
+        vcard.push_str("URL:");
+        escape_vcard_value_to(&format_url(&contact.website), &mut vcard);
+        vcard.push('\n');
     }
 
-    vcard.push("END:VCARD".to_string());
-    vcard.join("\n")
+    vcard.push_str("END:VCARD");
+    vcard
 }
 
 fn escape_wifi_string(s: &str) -> String {
