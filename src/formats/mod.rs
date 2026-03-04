@@ -38,21 +38,28 @@ pub struct LocationData {
 fn is_valid_email(email: &str) -> bool {
     static EMAIL_REGEX: OnceLock<Regex> = OnceLock::new();
     EMAIL_REGEX.get_or_init(|| {
-        Regex::new(r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$").unwrap()
+        Regex::new(r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+            .expect("Failed to compile email validation regex")
     }).is_match(email)
 }
 
 fn is_valid_phone(phone: &str) -> bool {
     static PHONE_REGEX: OnceLock<Regex> = OnceLock::new();
     PHONE_REGEX
-        .get_or_init(|| Regex::new(r"^\+?[0-9\s\-()\.]{7,20}$").unwrap())
+        .get_or_init(|| {
+            Regex::new(r"^\+?[0-9\s\-()\.]{7,20}$")
+                .expect("Failed to compile phone validation regex")
+        })
         .is_match(phone)
 }
 
 fn is_valid_url(url: &str) -> bool {
     static URL_REGEX: OnceLock<Regex> = OnceLock::new();
     URL_REGEX
-        .get_or_init(|| Regex::new(r"^(https?://)?([\w\d-]+\.)+[\w\d-]+(/.*)?$").unwrap())
+        .get_or_init(|| {
+            Regex::new(r"^(https?://)?([\w\d-]+\.)+[\w\d-]+(/.*)?$")
+                .expect("Failed to compile URL validation regex")
+        })
         .is_match(url)
 }
 
