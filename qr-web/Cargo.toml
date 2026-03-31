@@ -4,7 +4,7 @@ version = "0.2.0"
 edition = "2021"
 
 [dependencies]
-qr-rs = { path = "../", version = "0.4.0", package="qr-rs-11228588352010508593" }
+qr-rs = { path = "../", version = "0.4.0", package="qr-scan-rs" }
 yew = { version = "0.21", features = ["csr"] }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"

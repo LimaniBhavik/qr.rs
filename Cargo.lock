@@ -3936,7 +3936,7 @@ dependencies = [
  "image 0.25.9",
  "indicatif",
  "predicates",
- "qr-rs-11228588352010508593",
+ "qr-scan-rs",
 ]
 
 [[package]]
@@ -3947,11 +3947,11 @@ dependencies = [
  "egui",
  "egui_extras",
  "image 0.25.9",
- "qr-rs-11228588352010508593",
+ "qr-scan-rs",
 ]
 
 [[package]]
-name = "qr-rs-11228588352010508593"
+name = "qr-scan-rs"
 version = "0.4.0"
 dependencies = [
  "image 0.25.9",
@@ -3970,7 +3970,7 @@ dependencies = [
  "base64",
  "gloo 0.11.0",
  "gloo-console 0.3.0",
- "qr-rs-11228588352010508593",
+ "qr-scan-rs",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
