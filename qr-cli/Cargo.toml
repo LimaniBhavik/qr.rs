@@ -10,7 +10,7 @@ keywords = ["cli", "qrcode", "generator"]
 categories = ["command-line-utilities"]
 
 [dependencies]
-qr-rs = { path = "../", version = "0.4.0" }
+qr-rs = { path = "../", version = "0.4.0", package="qr-rs-11228588352010508593" }
 clap = { version = "4.5", features = ["derive"] }
 dialoguer = "0.11"
 colored = "2.1"
