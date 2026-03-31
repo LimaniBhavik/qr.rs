@@ -4,7 +4,7 @@ version = "0.3.0"
 edition = "2021"
 
 [dependencies]
-qr-rs = { path = "../", version = "0.4.0" }
+qr-rs = { path = "../", version = "0.4.0", package="qr-rs-11228588352010508593" }
 eframe = "0.27"
 egui = "0.27"
 egui_extras = { version = "0.27", features = ["image"] }
