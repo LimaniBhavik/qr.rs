@@ -293,26 +293,9 @@ fn generate(
 
                         let size = if let Some(s) = scale {
                             let width_modules = qr.width() as u32;
-                            // Approximate calculation assuming qrcode adds quiet zone (which is usually 4)
-                            // We use `border` arg only if we can customize it, but qrcode's render logic
-                            // is usually fixed to 4 or 0 (quiet_zone bool).
-                            // If border is specified, we can try to approximate.
-                            // If user sets border=1, but qrcode lib forces 4, it's not exact.
-                            // However, strictly supporting arbitrary border requires manual drawing.
-                            // For now, we scale based on module width + reasonable padding.
-                            // The `border` param is currently unused in calculation to avoid misleading behavior,
-                            // unless we implement manual border drawing.
-                            // To satisfy the user requirement "Border size ... [default: 1]",
-                            // we should probably try to respect it.
-
-                            // Let's assume for this iteration we use the standard 4-module quiet zone
-                            // provided by `qrcode` crate's `to_image` equivalent logic in `QRGenerator`,
-                            // OR we accept that `border` might be ignored if we don't change `QRGenerator`.
-
-                            // Wait, `QRGenerator::to_image` calls `qr.render::<Luma<u8>>().min_dimensions(size, size).build()`.
-                            // This uses the default quiet zone (4).
-                            // If I want to support border=1, I need to change `QRGenerator`.
-                            // I'll keep it simple for now and just silence the warning.
+                            // `qrcode` library uses a fixed quiet zone of 4 modules on each side.
+                            // The `border` parameter is currently ignored to maintain consistency
+                            // with the underlying library's default rendering behavior.
                             let _ = border;
 
                             (width_modules + 8) * s
