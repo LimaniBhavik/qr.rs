@@ -36,23 +36,33 @@ pub struct LocationData {
 }
 
 fn is_valid_email(email: &str) -> bool {
+    if email.len() > 254 {
+        return false;
+    }
     static EMAIL_REGEX: OnceLock<Regex> = OnceLock::new();
-    EMAIL_REGEX.get_or_init(|| {
-        Regex::new(r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$").expect("Invalid email regex pattern")
-    }).is_match(email)
+    EMAIL_REGEX
+        .get_or_init(|| {
+            Regex::new(r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$").expect("Invalid email regex pattern")
+        })
+        .is_match(email)
 }
 
 fn is_valid_phone(phone: &str) -> bool {
     static PHONE_REGEX: OnceLock<Regex> = OnceLock::new();
     PHONE_REGEX
-        .get_or_init(|| Regex::new(r"^\+?[0-9\s\-()\.]{7,20}$").expect("Invalid phone regex pattern"))
+        .get_or_init(|| {
+            Regex::new(r"^\+?[0-9\s\-()\.]{7,20}$").expect("Invalid phone regex pattern")
+        })
         .is_match(phone)
 }
 
 fn is_valid_url(url: &str) -> bool {
     static URL_REGEX: OnceLock<Regex> = OnceLock::new();
     URL_REGEX
-        .get_or_init(|| Regex::new(r"^(https?://)?([\w\d-]+\.)+[\w\d-]+(/.*)?$").expect("Invalid URL regex pattern"))
+        .get_or_init(|| {
+            Regex::new(r"^(https?://)?([\w\d-]+\.)+[\w\d-]+(/.*)?$")
+                .expect("Invalid URL regex pattern")
+        })
         .is_match(url)
 }
 
@@ -221,6 +231,7 @@ fn escape_wifi_string_to(s: &str, out: &mut String) {
 }
 
 pub fn generate_wifi(wifi: &WifiData) -> String {
+    let mut wifi_string = String::with_capacity(128);
     let encryption = match wifi.encryption {
         WifiEncryption::WPA => "WPA",
         WifiEncryption::WEP => "WEP",
@@ -228,17 +239,16 @@ pub fn generate_wifi(wifi: &WifiData) -> String {
     };
     let hidden = if wifi.hidden { "true" } else { "false" };
 
-    let mut out = String::with_capacity(128);
-    out.push_str("WIFI:T:");
-    out.push_str(encryption);
-    out.push_str(";S:");
-    escape_wifi_string_to(&wifi.ssid, &mut out);
-    out.push_str(";P:");
-    escape_wifi_string_to(&wifi.password, &mut out);
-    out.push_str(";H:");
-    out.push_str(hidden);
-    out.push_str(";;");
-    out
+    wifi_string.push_str("WIFI:T:");
+    wifi_string.push_str(encryption);
+    wifi_string.push_str(";S:");
+    escape_wifi_string_to(&wifi.ssid, &mut wifi_string);
+    wifi_string.push_str(";P:");
+    escape_wifi_string_to(&wifi.password, &mut wifi_string);
+    wifi_string.push_str(";H:");
+    wifi_string.push_str(hidden);
+    wifi_string.push_str(";;");
+    wifi_string
 }
 
 pub fn generate_geo_uri(location: &LocationData) -> String {
@@ -432,6 +442,14 @@ mod tests {
         // Invalid length label (> 63 characters)
         let invalid_label = "a".repeat(64);
         assert!(!is_valid_email(&format!("user@{}.com", invalid_label)));
+
+        // Length limit (max 254 chars)
+        let long_email = format!("{}@example.com", "a".repeat(250));
+        assert!(!is_valid_email(&long_email));
+
+        // ReDoS protection test
+        let evil_email = format!("user@{}!", "a.".repeat(100));
+        assert!(!is_valid_email(&evil_email));
     }
 
     #[test]
@@ -513,6 +531,30 @@ mod tests {
         };
         let wifi_nopass_string = generate_wifi(&wifi_nopass);
         assert_eq!(wifi_nopass_string, "WIFI:T:nopass;S:FreeWifi;P:;H:true;;");
+    }
+
+    #[test]
+    fn test_wifi_validation() {
+        let valid_wifi = WifiData {
+            ssid: "MyNetwork".to_string(),
+            password: "mypassword".to_string(),
+            encryption: WifiEncryption::WPA,
+            hidden: false,
+        };
+        assert!(valid_wifi.validate().is_ok());
+
+        let empty_ssid = WifiData {
+            ssid: "".to_string(),
+            password: "mypassword".to_string(),
+            encryption: WifiEncryption::WPA,
+            hidden: false,
+        };
+        let result = empty_ssid.validate();
+        assert!(result.is_err());
+        match result {
+            Err(QRError::InvalidData(msg)) => assert_eq!(msg, "SSID cannot be empty"),
+            _ => panic!("Expected QRError::InvalidData error"),
+        }
     }
 
     #[test]
