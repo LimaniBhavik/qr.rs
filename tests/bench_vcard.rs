@@ -201,7 +201,21 @@ fn main() {
     }
     let duration_new = start.elapsed();
 
-    println!("Old version (total for {} iterations * {} contacts): {:?}", iterations, contacts.len(), duration_old);
-    println!("New version (total for {} iterations * {} contacts): {:?}", iterations, contacts.len(), duration_new);
-    println!("Improvement: {:.2}%", (duration_old.as_secs_f64() - duration_new.as_secs_f64()) / duration_old.as_secs_f64() * 100.0);
+    println!(
+        "Old version (total for {} iterations * {} contacts): {:?}",
+        iterations,
+        contacts.len(),
+        duration_old
+    );
+    println!(
+        "New version (total for {} iterations * {} contacts): {:?}",
+        iterations,
+        contacts.len(),
+        duration_new
+    );
+    println!(
+        "Improvement: {:.2}%",
+        (duration_old.as_secs_f64() - duration_new.as_secs_f64()) / duration_old.as_secs_f64()
+            * 100.0
+    );
 }
