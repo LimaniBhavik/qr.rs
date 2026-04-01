@@ -36,10 +36,15 @@ pub struct LocationData {
 }
 
 fn is_valid_email(email: &str) -> bool {
+    if email.len() > 254 {
+        return false;
+    }
     static EMAIL_REGEX: OnceLock<Regex> = OnceLock::new();
-    EMAIL_REGEX.get_or_init(|| {
-        Regex::new(r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$").expect("Invalid email regex pattern")
-    }).is_match(email)
+    EMAIL_REGEX
+        .get_or_init(|| {
+            Regex::new(r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$").expect("Invalid email regex pattern")
+        })
+        .is_match(email)
 }
 
 fn is_valid_phone(phone: &str) -> bool {
@@ -422,6 +427,14 @@ mod tests {
         // Invalid length label (> 63 characters)
         let invalid_label = "a".repeat(64);
         assert!(!is_valid_email(&format!("user@{}.com", invalid_label)));
+
+        // Length limit (max 254 chars)
+        let long_email = format!("{}@example.com", "a".repeat(250));
+        assert!(!is_valid_email(&long_email));
+
+        // ReDoS protection test
+        let evil_email = format!("user@{}!", "a.".repeat(100));
+        assert!(!is_valid_email(&evil_email));
     }
 
     #[test]
