@@ -217,28 +217,38 @@ pub fn generate_vcard(contact: &ContactData) -> String {
     vcard
 }
 
-fn escape_wifi_string(s: &str) -> String {
-    s.replace('\\', "\\\\")
-        .replace(';', "\\;")
-        .replace(',', "\\,")
-        .replace(':', "\\:")
-        .replace('"', "\\\"")
+fn escape_wifi_string_to(s: &str, out: &mut String) {
+    for c in s.chars() {
+        match c {
+            '\\' => out.push_str("\\\\"),
+            ';' => out.push_str("\\;"),
+            ',' => out.push_str("\\,"),
+            ':' => out.push_str("\\:"),
+            '"' => out.push_str("\\\""),
+            _ => out.push(c),
+        }
+    }
 }
 
 pub fn generate_wifi(wifi: &WifiData) -> String {
+    let mut wifi_string = String::with_capacity(128);
     let encryption = match wifi.encryption {
         WifiEncryption::WPA => "WPA",
         WifiEncryption::WEP => "WEP",
         WifiEncryption::Nopass => "nopass",
     };
     let hidden = if wifi.hidden { "true" } else { "false" };
-    format!(
-        "WIFI:T:{};S:{};P:{};H:{};;",
-        encryption,
-        escape_wifi_string(&wifi.ssid),
-        escape_wifi_string(&wifi.password),
-        hidden
-    )
+
+    wifi_string.push_str("WIFI:T:");
+    wifi_string.push_str(encryption);
+    wifi_string.push_str(";S:");
+    escape_wifi_string_to(&wifi.ssid, &mut wifi_string);
+    wifi_string.push_str(";P:");
+    escape_wifi_string_to(&wifi.password, &mut wifi_string);
+    wifi_string.push_str(";H:");
+    wifi_string.push_str(hidden);
+    wifi_string.push_str(";;");
+    wifi_string
 }
 
 pub fn generate_geo_uri(location: &LocationData) -> String {
