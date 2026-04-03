@@ -89,10 +89,13 @@ pub struct QRGenerator {
 
 impl QRGenerator {
     pub fn new(data: QRData) -> Self {
-        QRBuilder::new()
-            .data(data)
-            .build()
-            .expect("QRBuilder should not fail when data is provided")
+        let builder = QRBuilder::default();
+        QRGenerator {
+            data,
+            error_correction: builder.error_correction,
+            foreground_color: builder.foreground_color,
+            background_color: builder.background_color,
+        }
     }
 
     pub fn generate(&self) -> Result<QrCode, QRError> {
