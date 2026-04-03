@@ -207,7 +207,10 @@ fn main() {
             generate(builder, output, logo, None, None);
         }
         Some(Commands::Interactive) | None => {
-            run_interactive();
+            if let Err(e) = run_interactive() {
+                eprintln!("{} {}", "Error:".red(), e);
+                std::process::exit(1);
+            }
         }
     }
 }
@@ -251,7 +254,7 @@ fn generate(
     pb.set_style(
         ProgressStyle::default_spinner()
             .template("{spinner:.green} {msg}")
-            .unwrap(),
+            .expect("Failed to initialize static progress bar template"),
     );
     pb.set_message("Generating QR Code...");
     pb.enable_steady_tick(Duration::from_millis(100));
@@ -352,14 +355,13 @@ fn generate(
     }
 }
 
-fn run_interactive() {
+fn run_interactive() -> std::io::Result<()> {
     let selections = &["URL", "Text", "Contact"];
     let selection = Select::with_theme(&ColorfulTheme::default())
         .with_prompt("Select QR Code Type")
         .default(0)
         .items(&selections[..])
-        .interact()
-        .unwrap();
+        .interact()?;
 
     let builder = QRBuilder::new();
 
@@ -367,13 +369,11 @@ fn run_interactive() {
         0 => {
             let url: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Enter URL")
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
             let output: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Output file (optional, leave empty for terminal)")
                 .allow_empty(true)
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
 
             let path = if output.is_empty() {
                 None
@@ -385,13 +385,11 @@ fn run_interactive() {
         1 => {
             let text: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Enter Text")
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
             let output: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Output file (optional)")
                 .allow_empty(true)
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
             let path = if output.is_empty() {
                 None
             } else {
@@ -403,33 +401,27 @@ fn run_interactive() {
             let first_name: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("First Name")
                 .allow_empty(true)
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
             let last_name: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Last Name")
                 .allow_empty(true)
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
             let email: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Email")
                 .allow_empty(true)
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
             let phone: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Phone")
                 .allow_empty(true)
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
             let organization: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Organization")
                 .allow_empty(true)
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
             let website: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Website")
                 .allow_empty(true)
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
 
             let contact = ContactData {
                 first_name,
@@ -443,8 +435,7 @@ fn run_interactive() {
             let output: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Output file (optional)")
                 .allow_empty(true)
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
             let path = if output.is_empty() {
                 None
             } else {
@@ -460,4 +451,6 @@ fn run_interactive() {
         }
         _ => {}
     }
+
+    Ok(())
 }
