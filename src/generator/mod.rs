@@ -1,5 +1,6 @@
 use crate::error::QRError;
 use crate::formats::{format_url, generate_geo_uri, generate_vcard, generate_wifi, QRData};
+use crate::utils::{BLACK, WHITE};
 use image::{DynamicImage, ImageFormat, Luma, Rgba, RgbaImage};
 use imageproc::drawing::draw_filled_rect_mut;
 use imageproc::rect::Rect;
@@ -8,8 +9,8 @@ use qrcode::QrCode;
 use std::io::Cursor;
 
 const DEFAULT_ERROR_CORRECTION: qrcode::EcLevel = qrcode::EcLevel::H;
-const DEFAULT_FOREGROUND_COLOR: Rgba<u8> = Rgba([0, 0, 0, 255]);
-const DEFAULT_BACKGROUND_COLOR: Rgba<u8> = Rgba([255, 255, 255, 255]);
+const DEFAULT_FOREGROUND_COLOR: Rgba<u8> = Rgba(BLACK);
+const DEFAULT_BACKGROUND_COLOR: Rgba<u8> = Rgba(WHITE);
 
 pub struct QRBuilder {
     data: Option<QRData>,
