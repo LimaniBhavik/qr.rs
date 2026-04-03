@@ -276,4 +276,40 @@ mod tests {
             _ => panic!("Expected QRError::InvalidData"),
         }
     }
+
+    #[test]
+    fn test_to_png() {
+        let generator = QRGenerator::new(QRData::Text("PNG Test".to_string()));
+        let result = generator.to_png(200, None);
+
+        assert!(result.is_ok());
+        let bytes = result.unwrap();
+        assert!(!bytes.is_empty());
+
+        // Verify it's a valid PNG
+        let image_result = image::load_from_memory_with_format(&bytes, ImageFormat::Png);
+        assert!(image_result.is_ok());
+    }
+
+    #[test]
+    fn test_to_png_with_logo() {
+        let generator = QRGenerator::new(QRData::Text("PNG with Logo Test".to_string()));
+
+        // Create a small 10x10 red square as a dummy logo
+        let mut logo_image = RgbaImage::new(10, 10);
+        for pixel in logo_image.pixels_mut() {
+            *pixel = Rgba([255, 0, 0, 255]);
+        }
+        let logo = DynamicImage::ImageRgba8(logo_image);
+
+        let result = generator.to_png(200, Some(&logo));
+
+        assert!(result.is_ok());
+        let bytes = result.unwrap();
+        assert!(!bytes.is_empty());
+
+        // Verify it's a valid PNG
+        let image_result = image::load_from_memory_with_format(&bytes, ImageFormat::Png);
+        assert!(image_result.is_ok());
+    }
 }
