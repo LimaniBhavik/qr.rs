@@ -45,14 +45,19 @@ fn is_valid_email(email: &str) -> bool {
 fn is_valid_phone(phone: &str) -> bool {
     static PHONE_REGEX: OnceLock<Regex> = OnceLock::new();
     PHONE_REGEX
-        .get_or_init(|| Regex::new(r"^\+?[0-9\s\-()\.]{7,20}$").expect("Invalid phone regex pattern"))
+        .get_or_init(|| {
+            Regex::new(r"^\+?[0-9\s\-()\.]{7,20}$").expect("Invalid phone regex pattern")
+        })
         .is_match(phone)
 }
 
 fn is_valid_url(url: &str) -> bool {
     static URL_REGEX: OnceLock<Regex> = OnceLock::new();
     URL_REGEX
-        .get_or_init(|| Regex::new(r"^(https?://)?([\w\d-]+\.)+[\w\d-]+(/.*)?$").expect("Invalid URL regex pattern"))
+        .get_or_init(|| {
+            Regex::new(r"^(https?://)?([\w\d-]+\.)+[\w\d-]+(/.*)?$")
+                .expect("Invalid URL regex pattern")
+        })
         .is_match(url)
 }
 
@@ -152,6 +157,8 @@ fn escape_vcard_value_to(s: &str, out: &mut String) {
             ',' => out.push_str("\\,"),
             ';' => out.push_str("\\;"),
             ':' => out.push_str("\\:"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
             _ => out.push(c),
         }
     }
@@ -245,6 +252,22 @@ mod tests {
         assert_eq!(format_url("example.com"), "https://example.com");
         assert_eq!(format_url("https://example.com"), "https://example.com");
         assert_eq!(format_url("http://example.com"), "http://example.com");
+    }
+
+    #[test]
+    fn test_vcard_newline_escaping() {
+        let contact = ContactData {
+            first_name: "John\nTEL:555-0199".to_string(),
+            last_name: "Doe\r\nORG:Injection".to_string(),
+            ..Default::default()
+        };
+
+        let vcard = generate_vcard(&contact);
+        // "John\nTEL:555-0199" -> "John\\nTEL\\:555-0199"
+        // "Doe\r\nORG:Injection" -> "Doe\\r\\nORG\\:Injection"
+        assert!(vcard.contains("FN:John\\nTEL\\:555-0199 Doe\\r\\nORG\\:Injection"));
+        assert!(!vcard.contains("\nTEL:"));
+        assert!(!vcard.contains("\r\nORG:"));
     }
 
     #[test]
