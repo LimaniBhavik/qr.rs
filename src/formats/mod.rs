@@ -241,16 +241,17 @@ pub fn generate_wifi(wifi: &WifiData) -> String {
     };
     let hidden = if wifi.hidden { "true" } else { "false" };
 
-    wifi_string.push_str("WIFI:T:");
-    wifi_string.push_str(encryption);
-    wifi_string.push_str(";S:");
-    escape_wifi_string_to(&wifi.ssid, &mut wifi_string);
-    wifi_string.push_str(";P:");
-    escape_wifi_string_to(&wifi.password, &mut wifi_string);
-    wifi_string.push_str(";H:");
-    wifi_string.push_str(hidden);
-    wifi_string.push_str(";;");
-    wifi_string
+    let mut out = String::with_capacity(128);
+    out.push_str("WIFI:T:");
+    out.push_str(encryption);
+    out.push_str(";S:");
+    escape_wifi_string_to(&wifi.ssid, &mut out);
+    out.push_str(";P:");
+    escape_wifi_string_to(&wifi.password, &mut out);
+    out.push_str(";H:");
+    out.push_str(hidden);
+    out.push_str(";;");
+    out
 }
 
 pub fn generate_geo_uri(location: &LocationData) -> String {
