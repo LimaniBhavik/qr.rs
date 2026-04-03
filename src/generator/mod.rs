@@ -67,12 +67,12 @@ impl QRBuilder {
     }
 
     pub fn build(self) -> Result<QRGenerator, QRError> {
-        if self.data.is_none() {
-            return Err(QRError::InvalidData("No data provided".to_string()));
-        }
+        let data = self
+            .data
+            .ok_or_else(|| QRError::InvalidData("No data provided".to_string()))?;
 
         Ok(QRGenerator {
-            data: self.data.expect("data should be checked for None before calling unwrap"),
+            data,
             error_correction: self.error_correction,
             foreground_color: self.foreground_color,
             background_color: self.background_color,
@@ -89,10 +89,13 @@ pub struct QRGenerator {
 
 impl QRGenerator {
     pub fn new(data: QRData) -> Self {
-        QRBuilder::new()
-            .data(data)
-            .build()
-            .expect("QRBuilder should not fail when data is provided")
+        let builder = QRBuilder::default();
+        QRGenerator {
+            data,
+            error_correction: builder.error_correction,
+            foreground_color: builder.foreground_color,
+            background_color: builder.background_color,
+        }
     }
 
     pub fn generate(&self) -> Result<QrCode, QRError> {
