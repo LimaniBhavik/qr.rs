@@ -162,6 +162,8 @@ fn escape_vcard_value_to(s: &str, out: &mut String) {
             ',' => out.push_str("\\,"),
             ';' => out.push_str("\\;"),
             ':' => out.push_str("\\:"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
             _ => out.push(c),
         }
     }
@@ -266,6 +268,22 @@ mod tests {
         assert_eq!(format_url("example.com"), "https://example.com");
         assert_eq!(format_url("https://example.com"), "https://example.com");
         assert_eq!(format_url("http://example.com"), "http://example.com");
+    }
+
+    #[test]
+    fn test_vcard_newline_escaping() {
+        let contact = ContactData {
+            first_name: "John\nTEL:555-0199".to_string(),
+            last_name: "Doe\r\nORG:Injection".to_string(),
+            ..Default::default()
+        };
+
+        let vcard = generate_vcard(&contact);
+        // "John\nTEL:555-0199" -> "John\\nTEL\\:555-0199"
+        // "Doe\r\nORG:Injection" -> "Doe\\r\\nORG\\:Injection"
+        assert!(vcard.contains("FN:John\\nTEL\\:555-0199 Doe\\r\\nORG\\:Injection"));
+        assert!(!vcard.contains("\nTEL:"));
+        assert!(!vcard.contains("\r\nORG:"));
     }
 
     #[test]
