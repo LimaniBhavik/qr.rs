@@ -226,7 +226,7 @@ fn escape_wifi_string_to(s: &str, out: &mut String) {
             ';' => out.push_str("\\;"),
             ',' => out.push_str("\\,"),
             ':' => out.push_str("\\:"),
-            '"' => out.push_str("\\\""),
+            '\"' => out.push_str("\\\""),
             _ => out.push(c),
         }
     }
