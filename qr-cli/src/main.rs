@@ -3,7 +3,7 @@ use colored::*;
 use dialoguer::{theme::ColorfulTheme, Input, Select};
 use image::ImageReader;
 use indicatif::{ProgressBar, ProgressStyle};
-use qr_rs::utils::parse_hex_color;
+use qr_rs::utils::{parse_hex_color, BLACK, WHITE};
 use qr_rs::{ContactData, QRBuilder, QRData};
 use std::fs;
 use std::path::PathBuf;
@@ -26,12 +26,12 @@ struct Cli {
     #[arg(short = 'F', long)]
     force: bool,
 
-    /// Background color (hex code)
-    #[arg(short = 'f', long, default_value = "#000")]
+    /// Foreground color (hex code)
+    #[arg(short = 'f', long, default_value = "#000000")]
     fg: String,
 
-    /// Foreground color (hex code)
-    #[arg(short = 'b', long, default_value = "#FFF")]
+    /// Background color (hex code)
+    #[arg(short = 'b', long, default_value = "#FFFFFF")]
     bg: String,
 
     /// Border size (expressed in unit blocks)
@@ -134,15 +134,15 @@ fn configure_builder(
     if let Some(fg) = foreground {
         if let Some(color) = parse_hex_color(&fg) {
             let bg = if let Some(bg_str) = background.clone() {
-                parse_hex_color(&bg_str).unwrap_or([255, 255, 255, 255])
+                parse_hex_color(&bg_str).unwrap_or(WHITE)
             } else {
-                [255, 255, 255, 255]
+                WHITE
             };
             builder = builder.colors(color, bg);
         }
     } else if let Some(bg) = background {
         if let Some(color) = parse_hex_color(&bg) {
-            builder = builder.colors([0, 0, 0, 255], color);
+            builder = builder.colors(BLACK, color);
         }
     }
 
@@ -213,8 +213,8 @@ fn main() {
 }
 
 fn run_simple_mode(cli: &Cli, input: String) {
-    let fg_color = parse_hex_color(&cli.fg).unwrap_or([0, 0, 0, 255]);
-    let bg_color = parse_hex_color(&cli.bg).unwrap_or([255, 255, 255, 255]);
+    let fg_color = parse_hex_color(&cli.fg).unwrap_or(BLACK);
+    let bg_color = parse_hex_color(&cli.bg).unwrap_or(WHITE);
 
     let builder = QRBuilder::new()
         .text(input)
