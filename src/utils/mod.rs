@@ -3,6 +3,9 @@ pub const MIN_QR_SIZE: u32 = 100;
 pub const MAX_QR_SIZE: u32 = 2000;
 pub const DEFAULT_QUIET_ZONE: u32 = 4;
 
+pub const BLACK: [u8; 4] = [0, 0, 0, 255];
+pub const WHITE: [u8; 4] = [255, 255, 255, 255];
+
 pub fn parse_hex_color(hex: &str) -> Option<[u8; 4]> {
     let hex = hex.trim_start_matches('#');
     if hex.len() != 6 && hex.len() != 8 {
