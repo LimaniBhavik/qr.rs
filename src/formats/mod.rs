@@ -485,6 +485,30 @@ mod tests {
     }
 
     #[test]
+    fn test_wifi_validation() {
+        let valid_wifi = WifiData {
+            ssid: "MyNetwork".to_string(),
+            password: "mypassword".to_string(),
+            encryption: WifiEncryption::WPA,
+            hidden: false,
+        };
+        assert!(valid_wifi.validate().is_ok());
+
+        let invalid_wifi = WifiData {
+            ssid: "".to_string(),
+            password: "mypassword".to_string(),
+            encryption: WifiEncryption::WPA,
+            hidden: false,
+        };
+        let result = invalid_wifi.validate();
+        assert!(result.is_err());
+        match result {
+            Err(QRError::InvalidData(msg)) => assert_eq!(msg, "SSID cannot be empty"),
+            _ => panic!("Expected QRError::InvalidData error"),
+        }
+    }
+
+    #[test]
     fn test_wifi_generation() {
         let wifi = WifiData {
             ssid: "MyNetwork".to_string(),
