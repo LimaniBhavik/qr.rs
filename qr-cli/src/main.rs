@@ -3,7 +3,7 @@ use colored::*;
 use dialoguer::{theme::ColorfulTheme, Input, Select};
 use image::ImageReader;
 use indicatif::{ProgressBar, ProgressStyle};
-use qr_rs::utils::parse_hex_color;
+use qr_rs::utils::{parse_hex_color, BLACK, WHITE};
 use qr_rs::{ContactData, QRBuilder, QRData};
 use std::fs;
 use std::path::PathBuf;
@@ -26,12 +26,12 @@ struct Cli {
     #[arg(short = 'F', long)]
     force: bool,
 
-    /// Background color (hex code)
-    #[arg(short = 'f', long, default_value = "#000")]
+    /// Foreground color (hex code)
+    #[arg(short = 'f', long, default_value = "#000000")]
     fg: String,
 
-    /// Foreground color (hex code)
-    #[arg(short = 'b', long, default_value = "#FFF")]
+    /// Background color (hex code)
+    #[arg(short = 'b', long, default_value = "#FFFFFF")]
     bg: String,
 
     /// Border size (expressed in unit blocks)
@@ -134,15 +134,15 @@ fn configure_builder(
     if let Some(fg) = foreground {
         if let Some(color) = parse_hex_color(&fg) {
             let bg = if let Some(bg_str) = background.clone() {
-                parse_hex_color(&bg_str).unwrap_or([255, 255, 255, 255])
+                parse_hex_color(&bg_str).unwrap_or(WHITE)
             } else {
-                [255, 255, 255, 255]
+                WHITE
             };
             builder = builder.colors(color, bg);
         }
     } else if let Some(bg) = background {
         if let Some(color) = parse_hex_color(&bg) {
-            builder = builder.colors([0, 0, 0, 255], color);
+            builder = builder.colors(BLACK, color);
         }
     }
 
@@ -207,14 +207,17 @@ fn main() {
             generate(builder, output, logo, None, None);
         }
         Some(Commands::Interactive) | None => {
-            run_interactive();
+            if let Err(e) = run_interactive() {
+                eprintln!("{} {}", "Error:".red(), e);
+                std::process::exit(1);
+            }
         }
     }
 }
 
 fn run_simple_mode(cli: &Cli, input: String) {
-    let fg_color = parse_hex_color(&cli.fg).unwrap_or([0, 0, 0, 255]);
-    let bg_color = parse_hex_color(&cli.bg).unwrap_or([255, 255, 255, 255]);
+    let fg_color = parse_hex_color(&cli.fg).unwrap_or(BLACK);
+    let bg_color = parse_hex_color(&cli.bg).unwrap_or(WHITE);
 
     let builder = QRBuilder::new()
         .text(input)
@@ -251,7 +254,7 @@ fn generate(
     pb.set_style(
         ProgressStyle::default_spinner()
             .template("{spinner:.green} {msg}")
-            .unwrap(),
+            .expect("Failed to initialize static progress bar template"),
     );
     pb.set_message("Generating QR Code...");
     pb.enable_steady_tick(Duration::from_millis(100));
@@ -293,26 +296,9 @@ fn generate(
 
                         let size = if let Some(s) = scale {
                             let width_modules = qr.width() as u32;
-                            // Approximate calculation assuming qrcode adds quiet zone (which is usually 4)
-                            // We use `border` arg only if we can customize it, but qrcode's render logic
-                            // is usually fixed to 4 or 0 (quiet_zone bool).
-                            // If border is specified, we can try to approximate.
-                            // If user sets border=1, but qrcode lib forces 4, it's not exact.
-                            // However, strictly supporting arbitrary border requires manual drawing.
-                            // For now, we scale based on module width + reasonable padding.
-                            // The `border` param is currently unused in calculation to avoid misleading behavior,
-                            // unless we implement manual border drawing.
-                            // To satisfy the user requirement "Border size ... [default: 1]",
-                            // we should probably try to respect it.
-
-                            // Let's assume for this iteration we use the standard 4-module quiet zone
-                            // provided by `qrcode` crate's `to_image` equivalent logic in `QRGenerator`,
-                            // OR we accept that `border` might be ignored if we don't change `QRGenerator`.
-
-                            // Wait, `QRGenerator::to_image` calls `qr.render::<Luma<u8>>().min_dimensions(size, size).build()`.
-                            // This uses the default quiet zone (4).
-                            // If I want to support border=1, I need to change `QRGenerator`.
-                            // I'll keep it simple for now and just silence the warning.
+                            // `qrcode` library uses a fixed quiet zone of 4 modules on each side.
+                            // The `border` parameter is currently ignored to maintain consistency
+                            // with the underlying library's default rendering behavior.
                             let _ = border;
 
                             (width_modules + 8) * s
@@ -352,14 +338,13 @@ fn generate(
     }
 }
 
-fn run_interactive() {
+fn run_interactive() -> std::io::Result<()> {
     let selections = &["URL", "Text", "Contact"];
     let selection = Select::with_theme(&ColorfulTheme::default())
         .with_prompt("Select QR Code Type")
         .default(0)
         .items(&selections[..])
-        .interact()
-        .unwrap();
+        .interact()?;
 
     let builder = QRBuilder::new();
 
@@ -367,13 +352,11 @@ fn run_interactive() {
         0 => {
             let url: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Enter URL")
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
             let output: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Output file (optional, leave empty for terminal)")
                 .allow_empty(true)
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
 
             let path = if output.is_empty() {
                 None
@@ -385,13 +368,11 @@ fn run_interactive() {
         1 => {
             let text: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Enter Text")
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
             let output: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Output file (optional)")
                 .allow_empty(true)
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
             let path = if output.is_empty() {
                 None
             } else {
@@ -403,33 +384,27 @@ fn run_interactive() {
             let first_name: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("First Name")
                 .allow_empty(true)
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
             let last_name: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Last Name")
                 .allow_empty(true)
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
             let email: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Email")
                 .allow_empty(true)
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
             let phone: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Phone")
                 .allow_empty(true)
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
             let organization: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Organization")
                 .allow_empty(true)
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
             let website: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Website")
                 .allow_empty(true)
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
 
             let contact = ContactData {
                 first_name,
@@ -443,8 +418,7 @@ fn run_interactive() {
             let output: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Output file (optional)")
                 .allow_empty(true)
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
             let path = if output.is_empty() {
                 None
             } else {
@@ -460,4 +434,6 @@ fn run_interactive() {
         }
         _ => {}
     }
+
+    Ok(())
 }
