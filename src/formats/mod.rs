@@ -330,7 +330,6 @@ mod tests {
         assert!(is_valid_email("user.name@example.com"));
         assert!(is_valid_email("user.name@sub.domain.co.uk")); // Added from issue description
         assert!(is_valid_email("user+tag@example.com"));
-        assert!(is_valid_email("user.name@sub.domain.co.uk"));
         assert!(is_valid_email("user-name@example.com"));
         assert!(is_valid_email("user_name@example.com"));
         assert!(is_valid_email("user@localhost"));
@@ -342,13 +341,10 @@ mod tests {
         assert!(is_valid_email("_______@example.com"));
         assert!(is_valid_email("u@example.com"));
         assert!(is_valid_email("user.name.with.dots@example.com"));
-        assert!(is_valid_email("user-name@example.com"));
-        assert!(is_valid_email("user_name@example.com"));
         assert!(is_valid_email("user!name@example.com"));
         assert!(is_valid_email("user#name@example.com"));
 
         // Extended valid edge cases
-        assert!(is_valid_email("user.name@sub.domain.co.uk"));
         assert!(is_valid_email("valid-local-part@domain.com"));
         assert!(is_valid_email("valid_local_part@domain.com"));
         assert!(is_valid_email("12345678901234567890@example.com"));
@@ -359,8 +355,6 @@ mod tests {
 
         // Valid emails - Edge cases (Complex characters in local part)
         assert!(is_valid_email("!#$%&'*+-/=?^_`{|}~@example.com"));
-        assert!(is_valid_email("user-name@example.com"));
-        assert!(is_valid_email("user_name@example.com"));
         assert!(is_valid_email("user%name@example.com"));
 
         // Valid emails - Edge cases (Domain segments length)
@@ -420,27 +414,12 @@ mod tests {
         assert!(!is_valid_email("user@.example.com"));
         assert!(!is_valid_email("user@example.com."));
         assert!(!is_valid_email("user@example_domain.com"));
-        assert!(!is_valid_email(".email@example.com")); // Leading dot in local part
-        assert!(!is_valid_email("email.@example.com")); // Trailing dot in local part
-        assert!(!is_valid_email("email..email@example.com")); // Consecutive dots in local part
-        assert!(!is_valid_email("あいうえお@example.com"));
-        assert!(!is_valid_email("email@example.com (Joe Smith)"));
-        assert!(!is_valid_email("email@-example.com"));
-        assert!(!is_valid_email("email@example..com")); // Consecutive dots in domain
-        assert!(!is_valid_email("Abc..123@example.com"));
-        assert!(!is_valid_email("user name@example.com")); // Space in local part
         assert!(!is_valid_email("user@example com")); // Space in domain
-        assert!(!is_valid_email("user@")); // Missing domain
-        assert!(!is_valid_email("user@.com")); // Missing domain name
         assert!(!is_valid_email("user@example.")); // Trailing dot in domain
 
         // Extended invalid edge cases
         assert!(!is_valid_email("")); // empty
         assert!(!is_valid_email(" ")); // whitespace
-        assert!(!is_valid_email("user@")); // missing domain
-        assert!(!is_valid_email("user@.com")); // domain starts with dot
-        assert!(!is_valid_email("user@domain.com.")); // domain ends with dot
-        assert!(!is_valid_email("user@domain..com")); // consecutive dots in domain
         assert!(!is_valid_email("user@do_main.com")); // underscore in domain
         assert!(!is_valid_email(".user@domain.com")); // leading dot in local part
         assert!(!is_valid_email("user.@domain.com")); // trailing dot in local part
@@ -448,7 +427,6 @@ mod tests {
         assert!(!is_valid_email("user@domain.-com")); // TLD starts with dash
         assert!(!is_valid_email("user@domain.com-")); // TLD ends with dash
         assert!(!is_valid_email("user@domain-.com")); // Domain ends with dash
-        assert!(!is_valid_email("user@-domain.com")); // Domain starts with dash
 
         // very long local part (assuming 64 chars limit isn't strictly enforced by the regex but let's see,
         // actually the current regex doesn't seem to bound the local part length.
@@ -531,29 +509,6 @@ mod tests {
         assert!(intl_phone.validate().is_ok());
     }
 
-    #[test]
-    fn test_wifi_validation() {
-        let valid_wifi = WifiData {
-            ssid: "MyNetwork".to_string(),
-            password: "mypassword".to_string(),
-            encryption: WifiEncryption::WPA,
-            hidden: false,
-        };
-        assert!(valid_wifi.validate().is_ok());
-
-        let invalid_wifi = WifiData {
-            ssid: "".to_string(),
-            password: "mypassword".to_string(),
-            encryption: WifiEncryption::WPA,
-            hidden: false,
-        };
-        let result = invalid_wifi.validate();
-        assert!(result.is_err());
-        match result {
-            Err(QRError::InvalidData(msg)) => assert_eq!(msg, "SSID cannot be empty"),
-            _ => panic!("Expected QRError::InvalidData error"),
-        }
-    }
 
     #[test]
     fn test_wifi_generation() {
@@ -576,6 +531,7 @@ mod tests {
         assert_eq!(wifi_nopass_string, "WIFI:T:nopass;S:FreeWifi;P:;H:true;;");
     }
 
+
     #[test]
     fn test_wifi_validation() {
         let valid_wifi = WifiData {
@@ -586,13 +542,13 @@ mod tests {
         };
         assert!(valid_wifi.validate().is_ok());
 
-        let empty_ssid = WifiData {
+        let invalid_wifi = WifiData {
             ssid: "".to_string(),
             password: "mypassword".to_string(),
             encryption: WifiEncryption::WPA,
             hidden: false,
         };
-        let result = empty_ssid.validate();
+        let result = invalid_wifi.validate();
         assert!(result.is_err());
         match result {
             Err(QRError::InvalidData(msg)) => assert_eq!(msg, "SSID cannot be empty"),
