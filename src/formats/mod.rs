@@ -155,22 +155,37 @@ pub fn format_url(url: &str) -> String {
     }
 }
 
+const fn build_escape_vcard_table() -> [u8; 256] {
+    let mut table = [0; 256];
+    table[b'\\' as usize] = 1;
+    table[b',' as usize] = 1;
+    table[b';' as usize] = 1;
+    table[b':' as usize] = 1;
+    table[b'\n' as usize] = 1;
+    table[b'\r' as usize] = 1;
+    table
+}
+
+const VCARD_ESCAPE_TABLE: [u8; 256] = build_escape_vcard_table();
+
 fn escape_vcard_value_to(s: &str, out: &mut String) {
     let mut last_pos = 0;
     let bytes = s.as_bytes();
     for (i, &b) in bytes.iter().enumerate() {
-        let escaped = match b {
-            b'\\' => "\\\\",
-            b',' => "\\,",
-            b';' => "\\;",
-            b':' => "\\:",
-            b'\n' => "\\n",
-            b'\r' => "\\r",
-            _ => continue,
-        };
-        out.push_str(unsafe { std::str::from_utf8_unchecked(&bytes[last_pos..i]) });
-        out.push_str(escaped);
-        last_pos = i + 1;
+        if VCARD_ESCAPE_TABLE[b as usize] != 0 {
+            let escaped = match b {
+                b'\\' => "\\\\",
+                b',' => "\\,",
+                b';' => "\\;",
+                b':' => "\\:",
+                b'\n' => "\\n",
+                b'\r' => "\\r",
+                _ => unreachable!(),
+            };
+            out.push_str(unsafe { std::str::from_utf8_unchecked(&bytes[last_pos..i]) });
+            out.push_str(escaped);
+            last_pos = i + 1;
+        }
     }
     out.push_str(unsafe { std::str::from_utf8_unchecked(&bytes[last_pos..]) });
 }
@@ -225,21 +240,35 @@ pub fn generate_vcard(contact: &ContactData) -> String {
     vcard
 }
 
+const fn build_escape_wifi_table() -> [u8; 256] {
+    let mut table = [0; 256];
+    table[b'\\' as usize] = 1;
+    table[b';' as usize] = 1;
+    table[b',' as usize] = 1;
+    table[b':' as usize] = 1;
+    table[b'\"' as usize] = 1;
+    table
+}
+
+const WIFI_ESCAPE_TABLE: [u8; 256] = build_escape_wifi_table();
+
 fn escape_wifi_string_to(s: &str, out: &mut String) {
     let mut last_pos = 0;
     let bytes = s.as_bytes();
     for (i, &b) in bytes.iter().enumerate() {
-        let escaped = match b {
-            b'\\' => "\\\\",
-            b';' => "\\;",
-            b',' => "\\,",
-            b':' => "\\:",
-            b'\"' => "\\\"",
-            _ => continue,
-        };
-        out.push_str(unsafe { std::str::from_utf8_unchecked(&bytes[last_pos..i]) });
-        out.push_str(escaped);
-        last_pos = i + 1;
+        if WIFI_ESCAPE_TABLE[b as usize] != 0 {
+            let escaped = match b {
+                b'\\' => "\\\\",
+                b';' => "\\;",
+                b',' => "\\,",
+                b':' => "\\:",
+                b'\"' => "\\\"",
+                _ => unreachable!(),
+            };
+            out.push_str(unsafe { std::str::from_utf8_unchecked(&bytes[last_pos..i]) });
+            out.push_str(escaped);
+            last_pos = i + 1;
+        }
     }
     out.push_str(unsafe { std::str::from_utf8_unchecked(&bytes[last_pos..]) });
 }
