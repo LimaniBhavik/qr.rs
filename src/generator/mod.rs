@@ -1,5 +1,6 @@
 use crate::error::QRError;
 use crate::formats::{format_url, generate_geo_uri, generate_vcard, generate_wifi, QRData};
+use crate::utils::{BLACK, WHITE};
 use image::{DynamicImage, ImageFormat, Luma, Rgba, RgbaImage};
 use imageproc::drawing::draw_filled_rect_mut;
 use imageproc::rect::Rect;
@@ -8,8 +9,8 @@ use qrcode::QrCode;
 use std::io::Cursor;
 
 const DEFAULT_ERROR_CORRECTION: qrcode::EcLevel = qrcode::EcLevel::H;
-const DEFAULT_FOREGROUND_COLOR: Rgba<u8> = Rgba([0, 0, 0, 255]);
-const DEFAULT_BACKGROUND_COLOR: Rgba<u8> = Rgba([255, 255, 255, 255]);
+const DEFAULT_FOREGROUND_COLOR: Rgba<u8> = Rgba(BLACK);
+const DEFAULT_BACKGROUND_COLOR: Rgba<u8> = Rgba(WHITE);
 
 pub struct QRBuilder {
     data: Option<QRData>,
@@ -67,9 +68,9 @@ impl QRBuilder {
     }
 
     pub fn build(self) -> Result<QRGenerator, QRError> {
-        if self.data.is_none() {
-            return Err(QRError::InvalidData("No data provided".to_string()));
-        }
+        let data = self
+            .data
+            .ok_or_else(|| QRError::InvalidData("No data provided".to_string()))?;
 
         Ok(QRGenerator {
             data: self
@@ -91,10 +92,13 @@ pub struct QRGenerator {
 
 impl QRGenerator {
     pub fn new(data: QRData) -> Self {
-        QRBuilder::new()
-            .data(data)
-            .build()
-            .expect("QRBuilder should not fail when data is provided")
+        let builder = QRBuilder::default();
+        QRGenerator {
+            data,
+            error_correction: builder.error_correction,
+            foreground_color: builder.foreground_color,
+            background_color: builder.background_color,
+        }
     }
 
     pub fn generate(&self) -> Result<QrCode, QRError> {
@@ -132,15 +136,18 @@ impl QRGenerator {
         let width = qr_image.width();
         let height = qr_image.height();
 
-        let mut image = RgbaImage::new(width, height);
+        let fg = self.foreground_color.0;
+        let bg = self.background_color.0;
 
-        for (target_pixel, pixel) in image.pixels_mut().zip(qr_image.pixels()) {
-            *target_pixel = if pixel.0[0] == 0 {
-                self.foreground_color
-            } else {
-                self.background_color
-            };
+        let qr_raw = qr_image.as_raw();
+
+        let mut buffer = Vec::with_capacity(qr_raw.len() * 4);
+        for &luma in qr_raw {
+            let color = if luma == 0 { fg } else { bg };
+            buffer.extend_from_slice(&color);
         }
+
+        let mut image = RgbaImage::from_raw(width, height, buffer).unwrap();
 
         if let Some(logo_img) = logo {
             info!("Adding logo to QR code");
@@ -177,10 +184,22 @@ impl QRGenerator {
 
     pub fn to_svg(&self) -> Result<String, QRError> {
         let qr = self.generate()?;
-        let mut binding = qr.render::<qrcode::render::svg::Color>();
-        let builder = binding.min_dimensions(200, 200);
 
-        // Use default colors for now due to lifetime issues with custom colors in SVG builder
+        let fg_hex = format!(
+            "#{:02X}{:02X}{:02X}",
+            self.foreground_color.0[0], self.foreground_color.0[1], self.foreground_color.0[2]
+        );
+        let bg_hex = format!(
+            "#{:02X}{:02X}{:02X}",
+            self.background_color.0[0], self.background_color.0[1], self.background_color.0[2]
+        );
+
+        let mut binding = qr.render::<qrcode::render::svg::Color>();
+        let builder = binding
+            .min_dimensions(200, 200)
+            .dark_color(qrcode::render::svg::Color(&fg_hex))
+            .light_color(qrcode::render::svg::Color(&bg_hex));
+
         Ok(builder.build())
     }
 }
@@ -277,5 +296,92 @@ mod tests {
             Err(QRError::InvalidData(msg)) => assert_eq!(msg, "No data provided"),
             _ => panic!("Expected QRError::InvalidData"),
         }
+    }
+
+    #[test]
+    fn test_to_png() {
+        let generator = QRGenerator::new(QRData::Text("PNG Test".to_string()));
+        let result = generator.to_png(200, None);
+
+        assert!(result.is_ok());
+        let bytes = result.unwrap();
+        assert!(!bytes.is_empty());
+
+        // Verify it's a valid PNG
+        let image_result = image::load_from_memory_with_format(&bytes, ImageFormat::Png);
+        assert!(image_result.is_ok());
+    }
+
+    #[test]
+    fn test_to_png_with_logo() {
+        let generator = QRGenerator::new(QRData::Text("PNG with Logo Test".to_string()));
+
+        // Create a small 10x10 red square as a dummy logo
+        let mut logo_image = RgbaImage::new(10, 10);
+        for pixel in logo_image.chunks_exact_mut(4) {
+            pixel.copy_from_slice(&[255, 0, 0, 255]);
+        }
+        let logo = DynamicImage::ImageRgba8(logo_image);
+
+        let result = generator.to_png(200, Some(&logo));
+
+        assert!(result.is_ok());
+        let bytes = result.unwrap();
+        assert!(!bytes.is_empty());
+
+        // Verify it's a valid PNG
+        let image_result = image::load_from_memory_with_format(&bytes, ImageFormat::Png);
+        assert!(image_result.is_ok());
+    }
+
+    #[test]
+    fn test_to_svg() {
+        let generator = QRGenerator::new(QRData::Text("SVG Test".to_string()));
+        let result = generator.to_svg();
+
+        assert!(result.is_ok());
+        let svg = result.unwrap();
+
+        assert!(svg.contains("<svg"));
+        assert!(svg.contains("viewBox"));
+        assert!(svg.contains("http://www.w3.org/2000/svg"));
+    }
+
+    #[test]
+    fn test_to_svg_wifi() {
+        let wifi = crate::formats::WifiData {
+            ssid: "TestNet".to_string(),
+            password: "pass".to_string(),
+            ..Default::default()
+        };
+        let generator = QRGenerator::new(QRData::Wifi(wifi));
+        let result = generator.to_svg();
+
+        assert!(result.is_ok());
+        let svg = result.unwrap();
+
+        assert!(svg.contains("<svg"));
+        assert!(svg.contains("viewBox"));
+    }
+
+    #[test]
+    fn test_to_svg_custom_colors() {
+        let fg = [255, 0, 0, 255]; // Red
+        let bg = [0, 255, 0, 255]; // Green
+
+        let generator = QRBuilder::new()
+            .text("SVG Custom Colors Test")
+            .colors(fg, bg)
+            .build()
+            .expect("Should build with custom colors");
+
+        let result = generator.to_svg();
+        assert!(result.is_ok());
+        let svg = result.unwrap();
+
+        assert!(svg.contains("<svg"));
+        assert!(svg.contains("viewBox"));
+        assert!(svg.contains("#FF0000")); // Check for foreground color
+        assert!(svg.contains("#00FF00")); // Check for background color
     }
 }
