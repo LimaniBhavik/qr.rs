@@ -169,14 +169,11 @@ const fn build_escape_vcard_table() -> [u8; 256] {
 const VCARD_ESCAPE_TABLE: [u8; 256] = build_escape_vcard_table();
 
 fn escape_vcard_value_to(s: &str, out: &mut String) {
-    let mut last_pos = 0;
     let bytes = s.as_bytes();
-    let len = bytes.len();
+    let mut last_pos = 0;
 
-    let mut i = 0;
-    while i < len {
-        let b = unsafe { *bytes.get_unchecked(i) };
-        if matches!(b, b'\\' | b',' | b';' | b':' | b'\n' | b'\r') {
+    for (i, &b) in bytes.iter().enumerate() {
+        if VCARD_ESCAPE_TABLE[b as usize] != 0 {
             out.push_str(unsafe {
                 std::str::from_utf8_unchecked(bytes.get_unchecked(last_pos..i))
             });
@@ -192,9 +189,10 @@ fn escape_vcard_value_to(s: &str, out: &mut String) {
             out.push_str(escaped);
             last_pos = i + 1;
         }
-        i += 1;
     }
-    out.push_str(unsafe { std::str::from_utf8_unchecked(bytes.get_unchecked(last_pos..len)) });
+    out.push_str(unsafe {
+        std::str::from_utf8_unchecked(bytes.get_unchecked(last_pos..bytes.len()))
+    });
 }
 
 pub fn generate_vcard(contact: &ContactData) -> String {
@@ -260,14 +258,11 @@ const fn build_escape_wifi_table() -> [u8; 256] {
 const WIFI_ESCAPE_TABLE: [u8; 256] = build_escape_wifi_table();
 
 fn escape_wifi_string_to(s: &str, out: &mut String) {
-    let mut last_pos = 0;
     let bytes = s.as_bytes();
-    let len = bytes.len();
+    let mut last_pos = 0;
 
-    let mut i = 0;
-    while i < len {
-        let b = unsafe { *bytes.get_unchecked(i) };
-        if matches!(b, b'\\' | b';' | b',' | b':' | b'\"') {
+    for (i, &b) in bytes.iter().enumerate() {
+        if WIFI_ESCAPE_TABLE[b as usize] != 0 {
             out.push_str(unsafe {
                 std::str::from_utf8_unchecked(bytes.get_unchecked(last_pos..i))
             });
@@ -282,9 +277,10 @@ fn escape_wifi_string_to(s: &str, out: &mut String) {
             out.push_str(escaped);
             last_pos = i + 1;
         }
-        i += 1;
     }
-    out.push_str(unsafe { std::str::from_utf8_unchecked(bytes.get_unchecked(last_pos..len)) });
+    out.push_str(unsafe {
+        std::str::from_utf8_unchecked(bytes.get_unchecked(last_pos..bytes.len()))
+    });
 }
 
 pub fn generate_wifi(wifi: &WifiData) -> String {

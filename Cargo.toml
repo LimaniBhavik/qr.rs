@@ -41,3 +41,15 @@ harness = false
 [[bench]]
 name = "escape_vcard_bench"
 harness = false
+
+[[bench]]
+name = "test_bench"
+harness = false
+
+[[bench]]
+name = "test_vcard_bench"
+harness = false
+
+[[bench]]
+name = "test_bench_v2"
+harness = false
