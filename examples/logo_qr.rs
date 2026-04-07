@@ -1,12 +1,12 @@
-use qr_rs::image::{DynamicImage, Rgba, RgbaImage};
+use qr_rs::image::{DynamicImage, RgbaImage};
 use qr_rs::{QRBuilder, QRError};
 use std::fs;
 
 fn main() -> Result<(), QRError> {
     // 1. Create a dummy logo (50x50 red square)
     let mut logo = RgbaImage::new(50, 50);
-    for pixel in logo.pixels_mut() {
-        *pixel = Rgba([255, 0, 0, 255]);
+    for pixel in logo.chunks_exact_mut(4) {
+        pixel.copy_from_slice(&[255, 0, 0, 255]);
     }
     let logo_dynamic = DynamicImage::ImageRgba8(logo);
 
