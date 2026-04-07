@@ -156,17 +156,22 @@ pub fn format_url(url: &str) -> String {
 }
 
 fn escape_vcard_value_to(s: &str, out: &mut String) {
-    for c in s.chars() {
-        match c {
-            '\\' => out.push_str("\\\\"),
-            ',' => out.push_str("\\,"),
-            ';' => out.push_str("\\;"),
-            ':' => out.push_str("\\:"),
-            '\n' => out.push_str("\\n"),
-            '\r' => out.push_str("\\r"),
-            _ => out.push(c),
-        }
+    let mut last_pos = 0;
+    for (i, b) in s.as_bytes().iter().enumerate() {
+        let escaped = match b {
+            b'\\' => "\\\\",
+            b',' => "\\,",
+            b';' => "\\;",
+            b':' => "\\:",
+            b'\n' => "\\n",
+            b'\r' => "\\r",
+            _ => continue,
+        };
+        out.push_str(&s[last_pos..i]);
+        out.push_str(escaped);
+        last_pos = i + 1;
     }
+    out.push_str(&s[last_pos..]);
 }
 
 pub fn generate_vcard(contact: &ContactData) -> String {
@@ -220,16 +225,21 @@ pub fn generate_vcard(contact: &ContactData) -> String {
 }
 
 fn escape_wifi_string_to(s: &str, out: &mut String) {
-    for c in s.chars() {
-        match c {
-            '\\' => out.push_str("\\\\"),
-            ';' => out.push_str("\\;"),
-            ',' => out.push_str("\\,"),
-            ':' => out.push_str("\\:"),
-            '"' => out.push_str("\\\""),
-            _ => out.push(c),
-        }
+    let mut last_pos = 0;
+    for (i, b) in s.as_bytes().iter().enumerate() {
+        let escaped = match b {
+            b'\\' => "\\\\",
+            b';' => "\\;",
+            b',' => "\\,",
+            b':' => "\\:",
+            b'\"' => "\\\"",
+            _ => continue,
+        };
+        out.push_str(&s[last_pos..i]);
+        out.push_str(escaped);
+        last_pos = i + 1;
     }
+    out.push_str(&s[last_pos..]);
 }
 
 pub fn generate_wifi(wifi: &WifiData) -> String {
