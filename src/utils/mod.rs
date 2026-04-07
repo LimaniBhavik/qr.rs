@@ -3,6 +3,9 @@ pub const MIN_QR_SIZE: u32 = 100;
 pub const MAX_QR_SIZE: u32 = 2000;
 pub const DEFAULT_QUIET_ZONE: u32 = 4;
 
+pub const BLACK: [u8; 4] = [0, 0, 0, 255];
+pub const WHITE: [u8; 4] = [255, 255, 255, 255];
+
 pub fn parse_hex_color(hex: &str) -> Option<[u8; 4]> {
     let hex = hex.trim_start_matches('#');
     if hex.len() != 6 && hex.len() != 8 {
@@ -24,13 +27,13 @@ mod tests {
     #[test]
     fn test_parse_hex_color_valid() {
         // 6 digits, uppercase
-        assert_eq!(parse_hex_color("#FFFFFF"), Some([255, 255, 255, 255]));
+        assert_eq!(parse_hex_color("#FFFFFF"), Some(WHITE));
         assert_eq!(parse_hex_color("#FF0000"), Some([255, 0, 0, 255]));
         assert_eq!(parse_hex_color("#00FF00"), Some([0, 255, 0, 255]));
         assert_eq!(parse_hex_color("#0000FF"), Some([0, 0, 255, 255]));
 
         // 6 digits, lowercase & mixed
-        assert_eq!(parse_hex_color("#ffffff"), Some([255, 255, 255, 255]));
+        assert_eq!(parse_hex_color("#ffffff"), Some(WHITE));
         assert_eq!(parse_hex_color("#aBcDeF"), Some([171, 205, 239, 255]));
 
         // 8 digits, uppercase
@@ -42,12 +45,12 @@ mod tests {
         assert_eq!(parse_hex_color("#1A2b3C4d"), Some([26, 43, 60, 77]));
 
         // Without hash
-        assert_eq!(parse_hex_color("000000"), Some([0, 0, 0, 255]));
-        assert_eq!(parse_hex_color("000000FF"), Some([0, 0, 0, 255]));
+        assert_eq!(parse_hex_color("000000"), Some(BLACK));
+        assert_eq!(parse_hex_color("000000FF"), Some(BLACK));
         assert_eq!(parse_hex_color("aBcDeF"), Some([171, 205, 239, 255]));
 
         // With multiple hashes (since trim_start_matches removes all leading matches)
-        assert_eq!(parse_hex_color("##FFFFFF"), Some([255, 255, 255, 255]));
+        assert_eq!(parse_hex_color("##FFFFFF"), Some(WHITE));
     }
 
     #[test]
