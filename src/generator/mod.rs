@@ -68,12 +68,12 @@ impl QRBuilder {
     }
 
     pub fn build(self) -> Result<QRGenerator, QRError> {
-        if self.data.is_none() {
-            return Err(QRError::InvalidData("No data provided".to_string()));
-        }
+        let data = self
+            .data
+            .ok_or_else(|| QRError::InvalidData("No data provided".to_string()))?;
 
         Ok(QRGenerator {
-            data: self.data.expect("data should be checked for None before calling unwrap"),
+            data,
             error_correction: self.error_correction,
             foreground_color: self.foreground_color,
             background_color: self.background_color,
@@ -90,10 +90,13 @@ pub struct QRGenerator {
 
 impl QRGenerator {
     pub fn new(data: QRData) -> Self {
-        QRBuilder::new()
-            .data(data)
-            .build()
-            .expect("QRBuilder should not fail when data is provided")
+        let builder = QRBuilder::default();
+        QRGenerator {
+            data,
+            error_correction: builder.error_correction,
+            foreground_color: builder.foreground_color,
+            background_color: builder.background_color,
+        }
     }
 
     pub fn generate(&self) -> Result<QrCode, QRError> {
@@ -276,5 +279,71 @@ mod tests {
             Err(QRError::InvalidData(msg)) => assert_eq!(msg, "No data provided"),
             _ => panic!("Expected QRError::InvalidData"),
         }
+    }
+
+    #[test]
+    fn test_to_png() {
+        let generator = QRGenerator::new(QRData::Text("PNG Test".to_string()));
+        let result = generator.to_png(200, None);
+
+        assert!(result.is_ok());
+        let bytes = result.unwrap();
+        assert!(!bytes.is_empty());
+
+        // Verify it's a valid PNG
+        let image_result = image::load_from_memory_with_format(&bytes, ImageFormat::Png);
+        assert!(image_result.is_ok());
+    }
+
+    #[test]
+    fn test_to_png_with_logo() {
+        let generator = QRGenerator::new(QRData::Text("PNG with Logo Test".to_string()));
+
+        // Create a small 10x10 red square as a dummy logo
+        let mut logo_image = RgbaImage::new(10, 10);
+        for pixel in logo_image.pixels_mut() {
+            *pixel = Rgba([255, 0, 0, 255]);
+        }
+        let logo = DynamicImage::ImageRgba8(logo_image);
+
+        let result = generator.to_png(200, Some(&logo));
+
+        assert!(result.is_ok());
+        let bytes = result.unwrap();
+        assert!(!bytes.is_empty());
+
+        // Verify it's a valid PNG
+        let image_result = image::load_from_memory_with_format(&bytes, ImageFormat::Png);
+        assert!(image_result.is_ok());
+    }
+
+    #[test]
+    fn test_to_svg() {
+        let generator = QRGenerator::new(QRData::Text("SVG Test".to_string()));
+        let result = generator.to_svg();
+
+        assert!(result.is_ok());
+        let svg = result.unwrap();
+
+        assert!(svg.contains("<svg"));
+        assert!(svg.contains("viewBox"));
+        assert!(svg.contains("http://www.w3.org/2000/svg"));
+    }
+
+    #[test]
+    fn test_to_svg_wifi() {
+        let wifi = crate::formats::WifiData {
+            ssid: "TestNet".to_string(),
+            password: "pass".to_string(),
+            ..Default::default()
+        };
+        let generator = QRGenerator::new(QRData::Wifi(wifi));
+        let result = generator.to_svg();
+
+        assert!(result.is_ok());
+        let svg = result.unwrap();
+
+        assert!(svg.contains("<svg"));
+        assert!(svg.contains("viewBox"));
     }
 }
