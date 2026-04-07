@@ -135,13 +135,13 @@ impl QRGenerator {
         let height = qr_image.height();
 
         let mut image = RgbaImage::new(width, height);
+        let fg = self.foreground_color.0;
+        let bg = self.background_color.0;
 
-        for (target_pixel, pixel) in image.pixels_mut().zip(qr_image.pixels()) {
-            *target_pixel = if pixel.0[0] == 0 {
-                self.foreground_color
-            } else {
-                self.background_color
-            };
+        let qr_raw = qr_image.as_raw();
+
+        for (target_chunk, &luma) in image.chunks_exact_mut(4).zip(qr_raw.iter()) {
+            target_chunk.copy_from_slice(if luma == 0 { &fg } else { &bg });
         }
 
         if let Some(logo_img) = logo {
