@@ -271,29 +271,32 @@ fn validate_output_path(path: &Path) -> Result<(), String> {
         }
     }
 
+    // Resolve the parent directory and ensure it does not escape the current working directory
+    // or follow symlinks to arbitrary locations.
+    let current_dir = std::env::current_dir()
+        .and_then(|d| d.canonicalize())
+        .map_err(|e| format!("Could not resolve current directory: {}", e))?;
+
     let parent = path.parent().unwrap_or_else(|| Path::new(""));
-    let parent_to_check = if parent.as_os_str().is_empty() {
+    let parent_path = if parent.as_os_str().is_empty() {
         Path::new(".")
     } else {
         parent
     };
 
-    let canonical_parent = parent_to_check
+    let resolved_parent = parent_path
         .canonicalize()
-        .map_err(|e| format!("Failed to resolve directory: {}", e))?;
+        .map_err(|e| format!("Could not resolve parent directory: {}", e))?;
 
-    let current_dir = std::env::current_dir()
-        .map_err(|e| format!("Failed to determine current directory: {}", e))?;
+    if !resolved_parent.starts_with(&current_dir) {
+        return Err("Output path resolves outside the current working directory.".to_string());
+    }
 
-    let canonical_current_dir = current_dir
-        .canonicalize()
-        .map_err(|e| format!("Failed to resolve current directory: {}", e))?;
-
-    if !canonical_parent.starts_with(&canonical_current_dir) {
-        return Err(
-            "Writing outside the current directory is not allowed for security reasons."
-                .to_string(),
-        );
+    // Ensure the file itself is not a symlink (if it exists)
+    if let Ok(metadata) = std::fs::symlink_metadata(path) {
+        if metadata.file_type().is_symlink() {
+            return Err("Symlinks are not allowed for security reasons.".to_string());
+        }
     }
 
     Ok(())
@@ -535,12 +538,7 @@ mod security_tests {
 
     #[test]
     fn test_validate_output_path() {
-        let current_dir = std::env::current_dir().unwrap();
-
-        // Setup a test directory
-        let safe_dir = current_dir.join("test_safe_dir");
-        let _ = std::fs::create_dir(&safe_dir);
-
+        let _ = std::fs::create_dir_all("dir");
         // Safe paths
         assert!(validate_output_path(Path::new("test.png")).is_ok());
         assert!(validate_output_path(Path::new("test_safe_dir/test.png")).is_ok());
