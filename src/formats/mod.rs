@@ -157,7 +157,8 @@ pub fn format_url(url: &str) -> String {
 
 fn escape_vcard_value_to(s: &str, out: &mut String) {
     let mut last_pos = 0;
-    for (i, b) in s.as_bytes().iter().enumerate() {
+    let bytes = s.as_bytes();
+    for (i, &b) in bytes.iter().enumerate() {
         let escaped = match b {
             b'\\' => "\\\\",
             b',' => "\\,",
@@ -167,11 +168,11 @@ fn escape_vcard_value_to(s: &str, out: &mut String) {
             b'\r' => "\\r",
             _ => continue,
         };
-        out.push_str(&s[last_pos..i]);
+        out.push_str(unsafe { std::str::from_utf8_unchecked(&bytes[last_pos..i]) });
         out.push_str(escaped);
         last_pos = i + 1;
     }
-    out.push_str(&s[last_pos..]);
+    out.push_str(unsafe { std::str::from_utf8_unchecked(&bytes[last_pos..]) });
 }
 
 pub fn generate_vcard(contact: &ContactData) -> String {
@@ -226,7 +227,8 @@ pub fn generate_vcard(contact: &ContactData) -> String {
 
 fn escape_wifi_string_to(s: &str, out: &mut String) {
     let mut last_pos = 0;
-    for (i, b) in s.as_bytes().iter().enumerate() {
+    let bytes = s.as_bytes();
+    for (i, &b) in bytes.iter().enumerate() {
         let escaped = match b {
             b'\\' => "\\\\",
             b';' => "\\;",
@@ -235,15 +237,15 @@ fn escape_wifi_string_to(s: &str, out: &mut String) {
             b'\"' => "\\\"",
             _ => continue,
         };
-        out.push_str(&s[last_pos..i]);
+        out.push_str(unsafe { std::str::from_utf8_unchecked(&bytes[last_pos..i]) });
         out.push_str(escaped);
         last_pos = i + 1;
     }
-    out.push_str(&s[last_pos..]);
+    out.push_str(unsafe { std::str::from_utf8_unchecked(&bytes[last_pos..]) });
 }
 
 pub fn generate_wifi(wifi: &WifiData) -> String {
-    let mut wifi_string = String::with_capacity(128);
+    let mut out = String::with_capacity(128);
     let encryption = match wifi.encryption {
         WifiEncryption::WPA => "WPA",
         WifiEncryption::WEP => "WEP",
@@ -251,7 +253,6 @@ pub fn generate_wifi(wifi: &WifiData) -> String {
     };
     let hidden = if wifi.hidden { "true" } else { "false" };
 
-    let mut out = String::with_capacity(128);
     out.push_str("WIFI:T:");
     out.push_str(encryption);
     out.push_str(";S:");
@@ -519,7 +520,6 @@ mod tests {
         assert!(intl_phone.validate().is_ok());
     }
 
-
     #[test]
     fn test_wifi_generation() {
         let wifi = WifiData {
@@ -540,7 +540,6 @@ mod tests {
         let wifi_nopass_string = generate_wifi(&wifi_nopass);
         assert_eq!(wifi_nopass_string, "WIFI:T:nopass;S:FreeWifi;P:;H:true;;");
     }
-
 
     #[test]
     fn test_wifi_validation() {

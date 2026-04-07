@@ -250,7 +250,9 @@ fn validate_output_path(path: &Path) -> Result<(), String> {
 
     for component in path.components() {
         if matches!(component, Component::ParentDir) {
-            return Err("Path traversal (using '..') is not allowed for security reasons.".to_string());
+            return Err(
+                "Path traversal (using '..') is not allowed for security reasons.".to_string(),
+            );
         }
     }
 
@@ -345,9 +347,7 @@ fn generate(
                                     println!("{} {}", "Saved to".green(), path.display());
                                 }
                             }
-                            Err(e) => {
-                                return Err(format!("{} {}", "Error encoding PNG:".red(), e))
-                            }
+                            Err(e) => return Err(format!("{} {}", "Error encoding PNG:".red(), e)),
                         }
                     }
                 } else {
