@@ -134,15 +134,22 @@ impl QRGenerator {
         let width = qr_image.width();
         let height = qr_image.height();
 
-        let mut image = RgbaImage::new(width, height);
         let fg = self.foreground_color.0;
         let bg = self.background_color.0;
 
         let qr_raw = qr_image.as_raw();
 
-        for (target_chunk, &luma) in image.chunks_exact_mut(4).zip(qr_raw.iter()) {
-            target_chunk.copy_from_slice(if luma == 0 { &fg } else { &bg });
+        let mut buffer = vec![0u8; qr_raw.len() * 4];
+        let mut chunks = buffer.chunks_exact_mut(4);
+        for (&luma, chunk) in qr_raw.iter().zip(&mut chunks) {
+            let color = if luma == 0 { fg } else { bg };
+            chunk[0] = color[0];
+            chunk[1] = color[1];
+            chunk[2] = color[2];
+            chunk[3] = color[3];
         }
+
+        let mut image = RgbaImage::from_raw(width, height, buffer).unwrap();
 
         if let Some(logo_img) = logo {
             info!("Adding logo to QR code");
@@ -301,8 +308,8 @@ mod tests {
 
         // Create a small 10x10 red square as a dummy logo
         let mut logo_image = RgbaImage::new(10, 10);
-        for pixel in logo_image.pixels_mut() {
-            *pixel = Rgba([255, 0, 0, 255]);
+        for pixel in logo_image.chunks_exact_mut(4) {
+            pixel.copy_from_slice(&[255, 0, 0, 255]);
         }
         let logo = DynamicImage::ImageRgba8(logo_image);
 
