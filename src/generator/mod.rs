@@ -316,4 +316,34 @@ mod tests {
         let image_result = image::load_from_memory_with_format(&bytes, ImageFormat::Png);
         assert!(image_result.is_ok());
     }
+
+    #[test]
+    fn test_to_svg() {
+        let generator = QRGenerator::new(QRData::Text("SVG Test".to_string()));
+        let result = generator.to_svg();
+
+        assert!(result.is_ok());
+        let svg = result.unwrap();
+
+        assert!(svg.contains("<svg"));
+        assert!(svg.contains("viewBox"));
+        assert!(svg.contains("http://www.w3.org/2000/svg"));
+    }
+
+    #[test]
+    fn test_to_svg_wifi() {
+        let wifi = crate::formats::WifiData {
+            ssid: "TestNet".to_string(),
+            password: "pass".to_string(),
+            ..Default::default()
+        };
+        let generator = QRGenerator::new(QRData::Wifi(wifi));
+        let result = generator.to_svg();
+
+        assert!(result.is_ok());
+        let svg = result.unwrap();
+
+        assert!(svg.contains("<svg"));
+        assert!(svg.contains("viewBox"));
+    }
 }
