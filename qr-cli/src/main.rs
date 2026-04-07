@@ -6,7 +6,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use qr_rs::utils::{parse_hex_color, BLACK, WHITE};
 use qr_rs::{ContactData, QRBuilder, QRData};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::time::Duration;
 
 #[derive(Parser)]
@@ -171,7 +171,7 @@ fn main() {
             logo,
         }) => {
             let builder = configure_builder(ec_level, foreground, background).url(url);
-            generate(builder, output.as_deref(), logo.as_deref(), None, None);
+            generate(builder, output.as_deref(), logo.as_deref(), None, None, cli.force)
         }
         Some(Commands::Text {
             text,
@@ -182,7 +182,7 @@ fn main() {
             logo,
         }) => {
             let builder = configure_builder(ec_level, foreground, background).text(text);
-            generate(builder, output.as_deref(), logo.as_deref(), None, None);
+            generate(builder, output.as_deref(), logo.as_deref(), None, None, cli.force)
         }
         Some(Commands::Contact {
             first_name,
@@ -207,14 +207,10 @@ fn main() {
             };
             let builder =
                 configure_builder(ec_level, foreground, background).data(QRData::Contact(contact));
-            generate(builder, output.as_deref(), logo.as_deref(), None, None);
+            generate(builder, output.as_deref(), logo.as_deref(), None, None, cli.force)
         }
         Some(Commands::Interactive) | None => {
-            if let Err(e) = run_interactive() {
-                eprintln!("{} {}", "Error:".red(), e);
-                std::process::exit(1);
-            }
-            Ok(())
+            run_interactive()
         }
     };
 
@@ -224,7 +220,7 @@ fn main() {
     }
 }
 
-fn run_simple_mode(cli: &Cli, input: String) {
+fn run_simple_mode(cli: &Cli, input: String) -> Result<(), String> {
     let fg_color = parse_hex_color(&cli.fg).unwrap_or(BLACK);
     let bg_color = parse_hex_color(&cli.bg).unwrap_or(WHITE);
 
@@ -372,13 +368,14 @@ fn generate(
     }
 }
 
-fn run_interactive() -> std::io::Result<()> {
+fn run_interactive() -> Result<(), String> {
     let selections = &["URL", "Text", "Contact"];
     let selection = Select::with_theme(&ColorfulTheme::default())
         .with_prompt("Select QR Code Type")
         .default(0)
         .items(&selections[..])
-        .interact()?;
+        .interact()
+        .map_err(|e| e.to_string())?;
 
     let builder = QRBuilder::new();
 
@@ -386,59 +383,69 @@ fn run_interactive() -> std::io::Result<()> {
         0 => {
             let url: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Enter URL")
-                .interact_text()?;
+                .interact_text()
+                .map_err(|e| e.to_string())?;
             let output: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Output file (optional, leave empty for terminal)")
                 .allow_empty(true)
-                .interact_text()?;
+                .interact_text()
+                .map_err(|e| e.to_string())?;
 
             let path = if output.is_empty() {
                 None
             } else {
                 Some(PathBuf::from(output))
             };
-            generate(builder.url(url), path.as_deref(), None, None, None);
+            generate(builder.url(url), path.as_deref(), None, None, None, false)?;
         }
         1 => {
             let text: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Enter Text")
-                .interact_text()?;
+                .interact_text()
+                .map_err(|e| e.to_string())?;
             let output: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Output file (optional)")
                 .allow_empty(true)
-                .interact_text()?;
+                .interact_text()
+                .map_err(|e| e.to_string())?;
             let path = if output.is_empty() {
                 None
             } else {
                 Some(PathBuf::from(output))
             };
-            generate(builder.text(text), path.as_deref(), None, None, None);
+            generate(builder.text(text), path.as_deref(), None, None, None, false)?;
         }
         2 => {
             let first_name: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("First Name")
                 .allow_empty(true)
-                .interact_text()?;
+                .interact_text()
+                .map_err(|e| e.to_string())?;
             let last_name: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Last Name")
                 .allow_empty(true)
-                .interact_text()?;
+                .interact_text()
+                .map_err(|e| e.to_string())?;
             let email: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Email")
                 .allow_empty(true)
-                .interact_text()?;
+                .interact_text()
+                .map_err(|e| e.to_string())?;
             let phone: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Phone")
                 .allow_empty(true)
-                .interact_text()?;
+                .interact_text()
+                .map_err(|e| e.to_string())?;
             let organization: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Organization")
                 .allow_empty(true)
-                .interact_text()?;
+                .interact_text()
+                .map_err(|e| e.to_string())?;
             let website: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Website")
                 .allow_empty(true)
-                .interact_text()?;
+                .interact_text()
+                .map_err(|e| e.to_string())?;
 
             let contact = ContactData {
                 first_name,
@@ -452,22 +459,21 @@ fn run_interactive() -> std::io::Result<()> {
             let output: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Output file (optional)")
                 .allow_empty(true)
-                .interact_text()?;
+                .interact_text()
+                .map_err(|e| e.to_string())?;
             let path = if output.is_empty() {
                 None
             } else {
                 Some(PathBuf::from(output))
             };
-            if let Err(e) = generate(
+            generate(
                 builder.data(QRData::Contact(contact)),
                 path.as_deref(),
                 None,
                 None,
                 None,
                 false,
-            ) {
-                eprintln!("{}", e);
-            }
+            )?;
         }
         _ => {}
     }
