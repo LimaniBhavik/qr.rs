@@ -6,7 +6,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use qr_rs::utils::{parse_hex_color, BLACK, WHITE};
 use qr_rs::{ContactData, QRBuilder, QRData};
 use std::fs;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 #[derive(Parser)]
@@ -171,7 +171,7 @@ fn main() {
             logo,
         }) => {
             let builder = configure_builder(ec_level, foreground, background).url(url);
-            generate(builder, output, logo, None, None, cli.force)
+            generate(builder, output.as_deref(), logo.as_deref(), None, None);
         }
         Some(Commands::Text {
             text,
@@ -182,7 +182,7 @@ fn main() {
             logo,
         }) => {
             let builder = configure_builder(ec_level, foreground, background).text(text);
-            generate(builder, output, logo, None, None, cli.force)
+            generate(builder, output.as_deref(), logo.as_deref(), None, None);
         }
         Some(Commands::Contact {
             first_name,
@@ -207,7 +207,7 @@ fn main() {
             };
             let builder =
                 configure_builder(ec_level, foreground, background).data(QRData::Contact(contact));
-            generate(builder, output, logo, None, None, cli.force)
+            generate(builder, output.as_deref(), logo.as_deref(), None, None);
         }
         Some(Commands::Interactive) | None => {
             if let Err(e) = run_interactive() {
@@ -235,7 +235,7 @@ fn run_simple_mode(cli: &Cli, input: String) {
 
     generate(
         builder,
-        cli.output.clone(),
+        cli.output.as_deref(),
         None,
         Some(cli.scale),
         Some(cli.border),
@@ -259,8 +259,8 @@ fn validate_output_path(path: &Path) -> Result<(), String> {
 
 fn generate(
     builder: QRBuilder,
-    output: Option<PathBuf>,
-    logo_path: Option<PathBuf>,
+    output: Option<&Path>,
+    logo_path: Option<&Path>,
     scale: Option<u32>,
     border: Option<u32>,
     force: bool,
@@ -397,9 +397,7 @@ fn run_interactive() -> std::io::Result<()> {
             } else {
                 Some(PathBuf::from(output))
             };
-            if let Err(e) = generate(builder.url(url), path, None, None, None, false) {
-                eprintln!("{}", e);
-            }
+            generate(builder.url(url), path.as_deref(), None, None, None);
         }
         1 => {
             let text: String = Input::with_theme(&ColorfulTheme::default())
@@ -414,9 +412,7 @@ fn run_interactive() -> std::io::Result<()> {
             } else {
                 Some(PathBuf::from(output))
             };
-            if let Err(e) = generate(builder.text(text), path, None, None, None, false) {
-                eprintln!("{}", e);
-            }
+            generate(builder.text(text), path.as_deref(), None, None, None);
         }
         2 => {
             let first_name: String = Input::with_theme(&ColorfulTheme::default())
@@ -464,7 +460,7 @@ fn run_interactive() -> std::io::Result<()> {
             };
             if let Err(e) = generate(
                 builder.data(QRData::Contact(contact)),
-                path,
+                path.as_deref(),
                 None,
                 None,
                 None,
