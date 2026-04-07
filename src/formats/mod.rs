@@ -176,7 +176,7 @@ fn escape_vcard_value_to(s: &str, out: &mut String) {
     let mut i = 0;
     while i < len {
         let b = unsafe { *bytes.get_unchecked(i) };
-        if matches!(b, b'\\' | b',' | b';' | b':' | b'\n' | b'\r') {
+        if VCARD_ESCAPE_TABLE[b as usize] != 0 {
             out.push_str(unsafe {
                 std::str::from_utf8_unchecked(bytes.get_unchecked(last_pos..i))
             });
@@ -267,7 +267,7 @@ fn escape_wifi_string_to(s: &str, out: &mut String) {
     let mut i = 0;
     while i < len {
         let b = unsafe { *bytes.get_unchecked(i) };
-        if matches!(b, b'\\' | b';' | b',' | b':' | b'\"') {
+        if WIFI_ESCAPE_TABLE[b as usize] != 0 {
             out.push_str(unsafe {
                 std::str::from_utf8_unchecked(bytes.get_unchecked(last_pos..i))
             });

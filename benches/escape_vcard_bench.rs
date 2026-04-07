@@ -3,21 +3,30 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 fn escape_vcard_value_to_current(s: &str, out: &mut String) {
     let mut last_pos = 0;
     let bytes = s.as_bytes();
-    for (i, &b) in bytes.iter().enumerate() {
-        let escaped = match b {
-            b'\\' => "\\\\",
-            b',' => "\\,",
-            b';' => "\\;",
-            b':' => "\\:",
-            b'\n' => "\\n",
-            b'\r' => "\\r",
-            _ => continue,
-        };
-        out.push_str(unsafe { std::str::from_utf8_unchecked(&bytes[last_pos..i]) });
-        out.push_str(escaped);
-        last_pos = i + 1;
+    let len = bytes.len();
+
+    let mut i = 0;
+    while i < len {
+        let b = unsafe { *bytes.get_unchecked(i) };
+        if matches!(b, b'\\' | b',' | b';' | b':' | b'\n' | b'\r') {
+            out.push_str(unsafe {
+                std::str::from_utf8_unchecked(bytes.get_unchecked(last_pos..i))
+            });
+            let escaped = match b {
+                b'\\' => "\\\\",
+                b',' => "\\,",
+                b';' => "\\;",
+                b':' => "\\:",
+                b'\n' => "\\n",
+                b'\r' => "\\r",
+                _ => unreachable!(),
+            };
+            out.push_str(escaped);
+            last_pos = i + 1;
+        }
+        i += 1;
     }
-    out.push_str(unsafe { std::str::from_utf8_unchecked(&bytes[last_pos..]) });
+    out.push_str(unsafe { std::str::from_utf8_unchecked(bytes.get_unchecked(last_pos..len)) });
 }
 
 const fn build_escape_vcard_table() -> [u8; 256] {
@@ -34,11 +43,17 @@ const fn build_escape_vcard_table() -> [u8; 256] {
 const VCARD_ESCAPE_TABLE: [u8; 256] = build_escape_vcard_table();
 
 fn escape_vcard_value_to_optimized(s: &str, out: &mut String) {
-    let bytes = s.as_bytes();
     let mut last_pos = 0;
+    let bytes = s.as_bytes();
+    let len = bytes.len();
 
-    for (i, &b) in bytes.iter().enumerate() {
+    let mut i = 0;
+    while i < len {
+        let b = unsafe { *bytes.get_unchecked(i) };
         if VCARD_ESCAPE_TABLE[b as usize] != 0 {
+            out.push_str(unsafe {
+                std::str::from_utf8_unchecked(bytes.get_unchecked(last_pos..i))
+            });
             let escaped = match b {
                 b'\\' => "\\\\",
                 b',' => "\\,",
@@ -48,12 +63,12 @@ fn escape_vcard_value_to_optimized(s: &str, out: &mut String) {
                 b'\r' => "\\r",
                 _ => unreachable!(),
             };
-            out.push_str(unsafe { std::str::from_utf8_unchecked(&bytes[last_pos..i]) });
             out.push_str(escaped);
             last_pos = i + 1;
         }
+        i += 1;
     }
-    out.push_str(unsafe { std::str::from_utf8_unchecked(&bytes[last_pos..]) });
+    out.push_str(unsafe { std::str::from_utf8_unchecked(bytes.get_unchecked(last_pos..len)) });
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
