@@ -155,6 +155,7 @@ pub fn format_url(url: &str) -> String {
     }
 }
 
+#[allow(dead_code)]
 const fn build_escape_vcard_table() -> [u8; 256] {
     let mut table = [0; 256];
     table[b'\\' as usize] = 1;
@@ -166,6 +167,7 @@ const fn build_escape_vcard_table() -> [u8; 256] {
     table
 }
 
+#[allow(dead_code)]
 const VCARD_ESCAPE_TABLE: [u8; 256] = build_escape_vcard_table();
 
 fn escape_vcard_value_to(s: &str, out: &mut String) {
@@ -247,6 +249,7 @@ pub fn generate_vcard(contact: &ContactData) -> String {
     vcard
 }
 
+#[allow(dead_code)]
 const fn build_escape_wifi_table() -> [u8; 256] {
     let mut table = [0; 256];
     table[b'\\' as usize] = 1;
@@ -257,6 +260,7 @@ const fn build_escape_wifi_table() -> [u8; 256] {
     table
 }
 
+#[allow(dead_code)]
 const WIFI_ESCAPE_TABLE: [u8; 256] = build_escape_wifi_table();
 
 fn escape_wifi_string_to(s: &str, out: &mut String) {
