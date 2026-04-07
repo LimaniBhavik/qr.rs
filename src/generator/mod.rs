@@ -72,7 +72,9 @@ impl QRBuilder {
         }
 
         Ok(QRGenerator {
-            data: self.data.expect("data should be checked for None before calling unwrap"),
+            data: self
+                .data
+                .expect("data should be checked for None before calling unwrap"),
             error_correction: self.error_correction,
             foreground_color: self.foreground_color,
             background_color: self.background_color,

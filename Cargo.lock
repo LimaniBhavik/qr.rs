@@ -3927,7 +3927,7 @@ dependencies = [
 
 [[package]]
 name = "qr-cli"
-version = "0.3.0"
+version = "0.4.1"
 dependencies = [
  "assert_cmd",
  "clap",
@@ -3936,23 +3936,23 @@ dependencies = [
  "image 0.25.9",
  "indicatif",
  "predicates",
- "qr-rs",
+ "qr-scan-rs",
 ]
 
 [[package]]
 name = "qr-gui"
-version = "0.3.0"
+version = "0.4.1"
 dependencies = [
  "eframe",
  "egui",
  "egui_extras",
  "image 0.25.9",
- "qr-rs",
+ "qr-scan-rs",
 ]
 
 [[package]]
-name = "qr-rs"
-version = "0.4.0"
+name = "qr-scan-rs"
+version = "0.4.1"
 dependencies = [
  "image 0.25.9",
  "imageproc",
@@ -3965,12 +3965,12 @@ dependencies = [
 
 [[package]]
 name = "qr-web"
-version = "0.2.0"
+version = "0.4.1"
 dependencies = [
  "base64",
  "gloo 0.11.0",
  "gloo-console 0.3.0",
- "qr-rs",
+ "qr-scan-rs",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
