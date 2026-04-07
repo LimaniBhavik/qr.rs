@@ -139,14 +139,10 @@ impl QRGenerator {
 
         let qr_raw = qr_image.as_raw();
 
-        let mut buffer = vec![0u8; qr_raw.len() * 4];
-        let mut chunks = buffer.chunks_exact_mut(4);
-        for (&luma, chunk) in qr_raw.iter().zip(&mut chunks) {
+        let mut buffer = Vec::with_capacity(qr_raw.len() * 4);
+        for &luma in qr_raw {
             let color = if luma == 0 { fg } else { bg };
-            chunk[0] = color[0];
-            chunk[1] = color[1];
-            chunk[2] = color[2];
-            chunk[3] = color[3];
+            buffer.extend_from_slice(&color);
         }
 
         let mut image = RgbaImage::from_raw(width, height, buffer).unwrap();
