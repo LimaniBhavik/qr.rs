@@ -171,8 +171,15 @@ const VCARD_ESCAPE_TABLE: [u8; 256] = build_escape_vcard_table();
 fn escape_vcard_value_to(s: &str, out: &mut String) {
     let mut last_pos = 0;
     let bytes = s.as_bytes();
-    for (i, &b) in bytes.iter().enumerate() {
-        if VCARD_ESCAPE_TABLE[b as usize] != 0 {
+    let len = bytes.len();
+
+    let mut i = 0;
+    while i < len {
+        let b = unsafe { *bytes.get_unchecked(i) };
+        if matches!(b, b'\\' | b',' | b';' | b':' | b'\n' | b'\r') {
+            out.push_str(unsafe {
+                std::str::from_utf8_unchecked(bytes.get_unchecked(last_pos..i))
+            });
             let escaped = match b {
                 b'\\' => "\\\\",
                 b',' => "\\,",
@@ -182,12 +189,12 @@ fn escape_vcard_value_to(s: &str, out: &mut String) {
                 b'\r' => "\\r",
                 _ => unreachable!(),
             };
-            out.push_str(unsafe { std::str::from_utf8_unchecked(&bytes[last_pos..i]) });
             out.push_str(escaped);
             last_pos = i + 1;
         }
+        i += 1;
     }
-    out.push_str(unsafe { std::str::from_utf8_unchecked(&bytes[last_pos..]) });
+    out.push_str(unsafe { std::str::from_utf8_unchecked(bytes.get_unchecked(last_pos..len)) });
 }
 
 pub fn generate_vcard(contact: &ContactData) -> String {
@@ -255,8 +262,15 @@ const WIFI_ESCAPE_TABLE: [u8; 256] = build_escape_wifi_table();
 fn escape_wifi_string_to(s: &str, out: &mut String) {
     let mut last_pos = 0;
     let bytes = s.as_bytes();
-    for (i, &b) in bytes.iter().enumerate() {
-        if WIFI_ESCAPE_TABLE[b as usize] != 0 {
+    let len = bytes.len();
+
+    let mut i = 0;
+    while i < len {
+        let b = unsafe { *bytes.get_unchecked(i) };
+        if matches!(b, b'\\' | b';' | b',' | b':' | b'\"') {
+            out.push_str(unsafe {
+                std::str::from_utf8_unchecked(bytes.get_unchecked(last_pos..i))
+            });
             let escaped = match b {
                 b'\\' => "\\\\",
                 b';' => "\\;",
@@ -265,12 +279,12 @@ fn escape_wifi_string_to(s: &str, out: &mut String) {
                 b'\"' => "\\\"",
                 _ => unreachable!(),
             };
-            out.push_str(unsafe { std::str::from_utf8_unchecked(&bytes[last_pos..i]) });
             out.push_str(escaped);
             last_pos = i + 1;
         }
+        i += 1;
     }
-    out.push_str(unsafe { std::str::from_utf8_unchecked(&bytes[last_pos..]) });
+    out.push_str(unsafe { std::str::from_utf8_unchecked(bytes.get_unchecked(last_pos..len)) });
 }
 
 pub fn generate_wifi(wifi: &WifiData) -> String {
