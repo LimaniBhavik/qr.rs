@@ -73,7 +73,9 @@ impl QRBuilder {
             .ok_or_else(|| QRError::InvalidData("No data provided".to_string()))?;
 
         Ok(QRGenerator {
-            data,
+            data: self
+                .data
+                .expect("data should be checked for None before calling unwrap"),
             error_correction: self.error_correction,
             foreground_color: self.foreground_color,
             background_color: self.background_color,

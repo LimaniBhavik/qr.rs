@@ -4,7 +4,7 @@
 Marketers run ad campaigns on billboards and transit stops. They need beautiful, branded QR codes (custom colors, embedded logos) to track physical engagement.
 
 ## The Solution: Branded QRs
-`qr.rs` supports custom foreground and background colors, and the core library/CLI support logo embedding.
+`qr-scan-rs` supports custom foreground and background colors, and the core library/CLI support logo embedding.
 
 ### CLI Example
 ```bash

@@ -4056,7 +4056,7 @@ dependencies = [
 
 [[package]]
 name = "qr-cli"
-version = "0.3.0"
+version = "0.4.1"
 dependencies = [
  "assert_cmd",
  "clap",
@@ -4070,7 +4070,7 @@ dependencies = [
 
 [[package]]
 name = "qr-gui"
-version = "0.3.0"
+version = "0.4.1"
 dependencies = [
  "eframe",
  "egui",
@@ -4081,7 +4081,7 @@ dependencies = [
 
 [[package]]
 name = "qr-scan-rs"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "criterion",
  "image 0.25.9",
@@ -4095,7 +4095,7 @@ dependencies = [
 
 [[package]]
 name = "qr-web"
-version = "0.2.0"
+version = "0.4.1"
 dependencies = [
  "base64",
  "gloo 0.11.0",
