@@ -171,7 +171,14 @@ fn main() {
             logo,
         }) => {
             let builder = configure_builder(ec_level, foreground, background).url(url);
-            generate(builder, output.as_deref(), logo.as_deref(), None, None, cli.force)
+            generate(
+                builder,
+                output.as_deref(),
+                logo.as_deref(),
+                None,
+                None,
+                cli.force,
+            )
         }
         Some(Commands::Text {
             text,
@@ -182,7 +189,14 @@ fn main() {
             logo,
         }) => {
             let builder = configure_builder(ec_level, foreground, background).text(text);
-            generate(builder, output.as_deref(), logo.as_deref(), None, None, cli.force)
+            generate(
+                builder,
+                output.as_deref(),
+                logo.as_deref(),
+                None,
+                None,
+                cli.force,
+            )
         }
         Some(Commands::Contact {
             first_name,
@@ -207,11 +221,16 @@ fn main() {
             };
             let builder =
                 configure_builder(ec_level, foreground, background).data(QRData::Contact(contact));
-            generate(builder, output.as_deref(), logo.as_deref(), None, None, cli.force)
+            generate(
+                builder,
+                output.as_deref(),
+                logo.as_deref(),
+                None,
+                None,
+                cli.force,
+            )
         }
-        Some(Commands::Interactive) | None => {
-            run_interactive()
-        }
+        Some(Commands::Interactive) | None => run_interactive(),
     };
 
     if let Err(e) = result {
