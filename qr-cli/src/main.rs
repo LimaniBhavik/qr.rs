@@ -171,7 +171,14 @@ fn main() {
             logo,
         }) => {
             let builder = configure_builder(ec_level, foreground, background).url(url);
-            generate(builder, output.as_deref(), logo.as_deref(), None, None, cli.force)
+            generate(
+                builder,
+                output.as_deref(),
+                logo.as_deref(),
+                None,
+                None,
+                cli.force,
+            )
         }
         Some(Commands::Text {
             text,
@@ -182,7 +189,14 @@ fn main() {
             logo,
         }) => {
             let builder = configure_builder(ec_level, foreground, background).text(text);
-            generate(builder, output.as_deref(), logo.as_deref(), None, None, cli.force)
+            generate(
+                builder,
+                output.as_deref(),
+                logo.as_deref(),
+                None,
+                None,
+                cli.force,
+            )
         }
         Some(Commands::Contact {
             first_name,
@@ -207,11 +221,16 @@ fn main() {
             };
             let builder =
                 configure_builder(ec_level, foreground, background).data(QRData::Contact(contact));
-            generate(builder, output.as_deref(), logo.as_deref(), None, None, cli.force)
+            generate(
+                builder,
+                output.as_deref(),
+                logo.as_deref(),
+                None,
+                None,
+                cli.force,
+            )
         }
-        Some(Commands::Interactive) | None => {
-            run_interactive()
-        }
+        Some(Commands::Interactive) | None => run_interactive(),
     };
 
     if let Err(e) = result {
@@ -250,6 +269,31 @@ fn validate_output_path(path: &Path) -> Result<(), String> {
                 "Path traversal (using '..') is not allowed for security reasons.".to_string(),
             );
         }
+    }
+
+    let parent = path.parent().unwrap_or_else(|| Path::new(""));
+    let parent_to_check = if parent.as_os_str().is_empty() {
+        Path::new(".")
+    } else {
+        parent
+    };
+
+    let canonical_parent = parent_to_check
+        .canonicalize()
+        .map_err(|e| format!("Failed to resolve directory: {}", e))?;
+
+    let current_dir = std::env::current_dir()
+        .map_err(|e| format!("Failed to determine current directory: {}", e))?;
+
+    let canonical_current_dir = current_dir
+        .canonicalize()
+        .map_err(|e| format!("Failed to resolve current directory: {}", e))?;
+
+    if !canonical_parent.starts_with(&canonical_current_dir) {
+        return Err(
+            "Writing outside the current directory is not allowed for security reasons."
+                .to_string(),
+        );
     }
 
     Ok(())
@@ -297,6 +341,9 @@ fn generate(
                     if extension.eq_ignore_ascii_case("svg") {
                         match generator.to_svg() {
                             Ok(svg) => {
+                                if let Err(e) = validate_output_path(&path) {
+                                    return Err(format!("{} {}", "Security Error:".red(), e));
+                                }
                                 if let Err(e) = fs::write(&path, svg) {
                                     return Err(format!("{} {}", "Error saving SVG:".red(), e));
                                 } else {
@@ -488,9 +535,15 @@ mod security_tests {
 
     #[test]
     fn test_validate_output_path() {
+        let current_dir = std::env::current_dir().unwrap();
+
+        // Setup a test directory
+        let safe_dir = current_dir.join("test_safe_dir");
+        let _ = std::fs::create_dir(&safe_dir);
+
         // Safe paths
         assert!(validate_output_path(Path::new("test.png")).is_ok());
-        assert!(validate_output_path(Path::new("dir/test.png")).is_ok());
+        assert!(validate_output_path(Path::new("test_safe_dir/test.png")).is_ok());
         assert!(validate_output_path(Path::new("./test.png")).is_ok());
 
         // Unsafe paths - Absolute
@@ -498,7 +551,9 @@ mod security_tests {
 
         // Unsafe paths - Traversal
         assert!(validate_output_path(Path::new("../test.png")).is_err());
-        assert!(validate_output_path(Path::new("dir/../../test.png")).is_err());
-        assert!(validate_output_path(Path::new("dir/..")).is_err());
+        assert!(validate_output_path(Path::new("test_safe_dir/../../test.png")).is_err());
+        assert!(validate_output_path(Path::new("test_safe_dir/..")).is_err());
+
+        let _ = std::fs::remove_dir(&safe_dir);
     }
 }
