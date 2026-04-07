@@ -187,8 +187,14 @@ impl QRGenerator {
     pub fn to_svg(&self) -> Result<String, QRError> {
         let qr = self.generate()?;
 
-        let fg_hex = format!("#{:02X}{:02X}{:02X}", self.foreground_color.0[0], self.foreground_color.0[1], self.foreground_color.0[2]);
-        let bg_hex = format!("#{:02X}{:02X}{:02X}", self.background_color.0[0], self.background_color.0[1], self.background_color.0[2]);
+        let fg_hex = format!(
+            "#{:02X}{:02X}{:02X}",
+            self.foreground_color.0[0], self.foreground_color.0[1], self.foreground_color.0[2]
+        );
+        let bg_hex = format!(
+            "#{:02X}{:02X}{:02X}",
+            self.background_color.0[0], self.background_color.0[1], self.background_color.0[2]
+        );
 
         let mut binding = qr.render::<qrcode::render::svg::Color>();
         let builder = binding
