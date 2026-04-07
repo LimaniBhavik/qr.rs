@@ -344,6 +344,9 @@ fn generate(
                     if extension.eq_ignore_ascii_case("svg") {
                         match generator.to_svg() {
                             Ok(svg) => {
+                                if let Err(e) = validate_output_path(&path) {
+                                    return Err(format!("{} {}", "Security Error:".red(), e));
+                                }
                                 if let Err(e) = fs::write(&path, svg) {
                                     return Err(format!("{} {}", "Error saving SVG:".red(), e));
                                 } else {
@@ -538,7 +541,7 @@ mod security_tests {
         let _ = std::fs::create_dir_all("dir");
         // Safe paths
         assert!(validate_output_path(Path::new("test.png")).is_ok());
-        assert!(validate_output_path(Path::new("dir/test.png")).is_ok());
+        assert!(validate_output_path(Path::new("test_safe_dir/test.png")).is_ok());
         assert!(validate_output_path(Path::new("./test.png")).is_ok());
 
         // Unsafe paths - Absolute
@@ -546,7 +549,9 @@ mod security_tests {
 
         // Unsafe paths - Traversal
         assert!(validate_output_path(Path::new("../test.png")).is_err());
-        assert!(validate_output_path(Path::new("dir/../../test.png")).is_err());
-        assert!(validate_output_path(Path::new("dir/..")).is_err());
+        assert!(validate_output_path(Path::new("test_safe_dir/../../test.png")).is_err());
+        assert!(validate_output_path(Path::new("test_safe_dir/..")).is_err());
+
+        let _ = std::fs::remove_dir(&safe_dir);
     }
 }
