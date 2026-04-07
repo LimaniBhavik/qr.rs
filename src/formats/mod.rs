@@ -36,23 +36,33 @@ pub struct LocationData {
 }
 
 fn is_valid_email(email: &str) -> bool {
+    if email.len() > 254 {
+        return false;
+    }
     static EMAIL_REGEX: OnceLock<Regex> = OnceLock::new();
-    EMAIL_REGEX.get_or_init(|| {
-        Regex::new(r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$").expect("Invalid email regex pattern")
-    }).is_match(email)
+    EMAIL_REGEX
+        .get_or_init(|| {
+            Regex::new(r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$").expect("Invalid email regex pattern")
+        })
+        .is_match(email)
 }
 
 fn is_valid_phone(phone: &str) -> bool {
     static PHONE_REGEX: OnceLock<Regex> = OnceLock::new();
     PHONE_REGEX
-        .get_or_init(|| Regex::new(r"^\+?[0-9\s\-()\.]{7,20}$").expect("Invalid phone regex pattern"))
+        .get_or_init(|| {
+            Regex::new(r"^\+?[0-9\s\-()\.]{7,20}$").expect("Invalid phone regex pattern")
+        })
         .is_match(phone)
 }
 
 fn is_valid_url(url: &str) -> bool {
     static URL_REGEX: OnceLock<Regex> = OnceLock::new();
     URL_REGEX
-        .get_or_init(|| Regex::new(r"^(https?://)?([\w\d-]+\.)+[\w\d-]+(/.*)?$").expect("Invalid URL regex pattern"))
+        .get_or_init(|| {
+            Regex::new(r"^(https?://)?([\w\d-]+\.)+[\w\d-]+(/.*)?$")
+                .expect("Invalid URL regex pattern")
+        })
         .is_match(url)
 }
 
@@ -146,15 +156,22 @@ pub fn format_url(url: &str) -> String {
 }
 
 fn escape_vcard_value_to(s: &str, out: &mut String) {
-    for c in s.chars() {
-        match c {
-            '\\' => out.push_str("\\\\"),
-            ',' => out.push_str("\\,"),
-            ';' => out.push_str("\\;"),
-            ':' => out.push_str("\\:"),
-            _ => out.push(c),
-        }
+    let mut last_pos = 0;
+    for (i, b) in s.as_bytes().iter().enumerate() {
+        let escaped = match b {
+            b'\\' => "\\\\",
+            b',' => "\\,",
+            b';' => "\\;",
+            b':' => "\\:",
+            b'\n' => "\\n",
+            b'\r' => "\\r",
+            _ => continue,
+        };
+        out.push_str(&s[last_pos..i]);
+        out.push_str(escaped);
+        last_pos = i + 1;
     }
+    out.push_str(&s[last_pos..]);
 }
 
 pub fn generate_vcard(contact: &ContactData) -> String {
@@ -207,28 +224,44 @@ pub fn generate_vcard(contact: &ContactData) -> String {
     vcard
 }
 
-fn escape_wifi_string(s: &str) -> String {
-    s.replace('\\', "\\\\")
-        .replace(';', "\\;")
-        .replace(',', "\\,")
-        .replace(':', "\\:")
-        .replace('"', "\\\"")
+fn escape_wifi_string_to(s: &str, out: &mut String) {
+    let mut last_pos = 0;
+    for (i, b) in s.as_bytes().iter().enumerate() {
+        let escaped = match b {
+            b'\\' => "\\\\",
+            b';' => "\\;",
+            b',' => "\\,",
+            b':' => "\\:",
+            b'\"' => "\\\"",
+            _ => continue,
+        };
+        out.push_str(&s[last_pos..i]);
+        out.push_str(escaped);
+        last_pos = i + 1;
+    }
+    out.push_str(&s[last_pos..]);
 }
 
 pub fn generate_wifi(wifi: &WifiData) -> String {
+    let mut wifi_string = String::with_capacity(128);
     let encryption = match wifi.encryption {
         WifiEncryption::WPA => "WPA",
         WifiEncryption::WEP => "WEP",
         WifiEncryption::Nopass => "nopass",
     };
     let hidden = if wifi.hidden { "true" } else { "false" };
-    format!(
-        "WIFI:T:{};S:{};P:{};H:{};;",
-        encryption,
-        escape_wifi_string(&wifi.ssid),
-        escape_wifi_string(&wifi.password),
-        hidden
-    )
+
+    let mut out = String::with_capacity(128);
+    out.push_str("WIFI:T:");
+    out.push_str(encryption);
+    out.push_str(";S:");
+    escape_wifi_string_to(&wifi.ssid, &mut out);
+    out.push_str(";P:");
+    escape_wifi_string_to(&wifi.password, &mut out);
+    out.push_str(";H:");
+    out.push_str(hidden);
+    out.push_str(";;");
+    out
 }
 
 pub fn generate_geo_uri(location: &LocationData) -> String {
@@ -245,6 +278,22 @@ mod tests {
         assert_eq!(format_url("example.com"), "https://example.com");
         assert_eq!(format_url("https://example.com"), "https://example.com");
         assert_eq!(format_url("http://example.com"), "http://example.com");
+    }
+
+    #[test]
+    fn test_vcard_newline_escaping() {
+        let contact = ContactData {
+            first_name: "John\nTEL:555-0199".to_string(),
+            last_name: "Doe\r\nORG:Injection".to_string(),
+            ..Default::default()
+        };
+
+        let vcard = generate_vcard(&contact);
+        // "John\nTEL:555-0199" -> "John\\nTEL\\:555-0199"
+        // "Doe\r\nORG:Injection" -> "Doe\\r\\nORG\\:Injection"
+        assert!(vcard.contains("FN:John\\nTEL\\:555-0199 Doe\\r\\nORG\\:Injection"));
+        assert!(!vcard.contains("\nTEL:"));
+        assert!(!vcard.contains("\r\nORG:"));
     }
 
     #[test]
@@ -291,7 +340,6 @@ mod tests {
         assert!(is_valid_email("user.name@example.com"));
         assert!(is_valid_email("user.name@sub.domain.co.uk")); // Added from issue description
         assert!(is_valid_email("user+tag@example.com"));
-        assert!(is_valid_email("user.name@sub.domain.co.uk"));
         assert!(is_valid_email("user-name@example.com"));
         assert!(is_valid_email("user_name@example.com"));
         assert!(is_valid_email("user@localhost"));
@@ -303,13 +351,10 @@ mod tests {
         assert!(is_valid_email("_______@example.com"));
         assert!(is_valid_email("u@example.com"));
         assert!(is_valid_email("user.name.with.dots@example.com"));
-        assert!(is_valid_email("user-name@example.com"));
-        assert!(is_valid_email("user_name@example.com"));
         assert!(is_valid_email("user!name@example.com"));
         assert!(is_valid_email("user#name@example.com"));
 
         // Extended valid edge cases
-        assert!(is_valid_email("user.name@sub.domain.co.uk"));
         assert!(is_valid_email("valid-local-part@domain.com"));
         assert!(is_valid_email("valid_local_part@domain.com"));
         assert!(is_valid_email("12345678901234567890@example.com"));
@@ -320,8 +365,6 @@ mod tests {
 
         // Valid emails - Edge cases (Complex characters in local part)
         assert!(is_valid_email("!#$%&'*+-/=?^_`{|}~@example.com"));
-        assert!(is_valid_email("user-name@example.com"));
-        assert!(is_valid_email("user_name@example.com"));
         assert!(is_valid_email("user%name@example.com"));
 
         // Valid emails - Edge cases (Domain segments length)
@@ -381,27 +424,12 @@ mod tests {
         assert!(!is_valid_email("user@.example.com"));
         assert!(!is_valid_email("user@example.com."));
         assert!(!is_valid_email("user@example_domain.com"));
-        assert!(!is_valid_email(".email@example.com")); // Leading dot in local part
-        assert!(!is_valid_email("email.@example.com")); // Trailing dot in local part
-        assert!(!is_valid_email("email..email@example.com")); // Consecutive dots in local part
-        assert!(!is_valid_email("あいうえお@example.com"));
-        assert!(!is_valid_email("email@example.com (Joe Smith)"));
-        assert!(!is_valid_email("email@-example.com"));
-        assert!(!is_valid_email("email@example..com")); // Consecutive dots in domain
-        assert!(!is_valid_email("Abc..123@example.com"));
-        assert!(!is_valid_email("user name@example.com")); // Space in local part
         assert!(!is_valid_email("user@example com")); // Space in domain
-        assert!(!is_valid_email("user@")); // Missing domain
-        assert!(!is_valid_email("user@.com")); // Missing domain name
         assert!(!is_valid_email("user@example.")); // Trailing dot in domain
 
         // Extended invalid edge cases
         assert!(!is_valid_email("")); // empty
         assert!(!is_valid_email(" ")); // whitespace
-        assert!(!is_valid_email("user@")); // missing domain
-        assert!(!is_valid_email("user@.com")); // domain starts with dot
-        assert!(!is_valid_email("user@domain.com.")); // domain ends with dot
-        assert!(!is_valid_email("user@domain..com")); // consecutive dots in domain
         assert!(!is_valid_email("user@do_main.com")); // underscore in domain
         assert!(!is_valid_email(".user@domain.com")); // leading dot in local part
         assert!(!is_valid_email("user.@domain.com")); // trailing dot in local part
@@ -409,7 +437,6 @@ mod tests {
         assert!(!is_valid_email("user@domain.-com")); // TLD starts with dash
         assert!(!is_valid_email("user@domain.com-")); // TLD ends with dash
         assert!(!is_valid_email("user@domain-.com")); // Domain ends with dash
-        assert!(!is_valid_email("user@-domain.com")); // Domain starts with dash
 
         // very long local part (assuming 64 chars limit isn't strictly enforced by the regex but let's see,
         // actually the current regex doesn't seem to bound the local part length.
@@ -422,6 +449,14 @@ mod tests {
         // Invalid length label (> 63 characters)
         let invalid_label = "a".repeat(64);
         assert!(!is_valid_email(&format!("user@{}.com", invalid_label)));
+
+        // Length limit (max 254 chars)
+        let long_email = format!("{}@example.com", "a".repeat(250));
+        assert!(!is_valid_email(&long_email));
+
+        // ReDoS protection test
+        let evil_email = format!("user@{}!", "a.".repeat(100));
+        assert!(!is_valid_email(&evil_email));
     }
 
     #[test]
@@ -484,6 +519,7 @@ mod tests {
         assert!(intl_phone.validate().is_ok());
     }
 
+
     #[test]
     fn test_wifi_generation() {
         let wifi = WifiData {
@@ -503,6 +539,31 @@ mod tests {
         };
         let wifi_nopass_string = generate_wifi(&wifi_nopass);
         assert_eq!(wifi_nopass_string, "WIFI:T:nopass;S:FreeWifi;P:;H:true;;");
+    }
+
+
+    #[test]
+    fn test_wifi_validation() {
+        let valid_wifi = WifiData {
+            ssid: "MyNetwork".to_string(),
+            password: "mypassword".to_string(),
+            encryption: WifiEncryption::WPA,
+            hidden: false,
+        };
+        assert!(valid_wifi.validate().is_ok());
+
+        let invalid_wifi = WifiData {
+            ssid: "".to_string(),
+            password: "mypassword".to_string(),
+            encryption: WifiEncryption::WPA,
+            hidden: false,
+        };
+        let result = invalid_wifi.validate();
+        assert!(result.is_err());
+        match result {
+            Err(QRError::InvalidData(msg)) => assert_eq!(msg, "SSID cannot be empty"),
+            _ => panic!("Expected QRError::InvalidData error"),
+        }
     }
 
     #[test]

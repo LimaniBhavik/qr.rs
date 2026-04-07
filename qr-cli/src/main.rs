@@ -3,7 +3,7 @@ use colored::*;
 use dialoguer::{theme::ColorfulTheme, Input, Select};
 use image::ImageReader;
 use indicatif::{ProgressBar, ProgressStyle};
-use qr_rs::utils::parse_hex_color;
+use qr_rs::utils::{parse_hex_color, BLACK, WHITE};
 use qr_rs::{ContactData, QRBuilder, QRData};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -26,12 +26,12 @@ struct Cli {
     #[arg(short = 'F', long)]
     force: bool,
 
-    /// Background color (hex code)
-    #[arg(short = 'f', long, default_value = "#000")]
+    /// Foreground color (hex code)
+    #[arg(short = 'f', long, default_value = "#000000")]
     fg: String,
 
-    /// Foreground color (hex code)
-    #[arg(short = 'b', long, default_value = "#FFF")]
+    /// Background color (hex code)
+    #[arg(short = 'b', long, default_value = "#FFFFFF")]
     bg: String,
 
     /// Border size (expressed in unit blocks)
@@ -134,15 +134,15 @@ fn configure_builder(
     if let Some(fg) = foreground {
         if let Some(color) = parse_hex_color(&fg) {
             let bg = if let Some(bg_str) = background.clone() {
-                parse_hex_color(&bg_str).unwrap_or([255, 255, 255, 255])
+                parse_hex_color(&bg_str).unwrap_or(WHITE)
             } else {
-                [255, 255, 255, 255]
+                WHITE
             };
             builder = builder.colors(color, bg);
         }
     } else if let Some(bg) = background {
         if let Some(color) = parse_hex_color(&bg) {
-            builder = builder.colors([0, 0, 0, 255], color);
+            builder = builder.colors(BLACK, color);
         }
     }
 
@@ -154,11 +154,14 @@ fn main() {
 
     // If input is provided, run in simpler mode
     if let Some(ref input_string) = cli.input {
-        run_simple_mode(&cli, input_string.clone());
+        if let Err(e) = run_simple_mode(&cli, input_string.clone()) {
+            eprintln!("{}", e);
+            std::process::exit(1);
+        }
         return;
     }
 
-    match cli.command {
+    let result = match cli.command {
         Some(Commands::Url {
             url,
             output,
@@ -207,29 +210,28 @@ fn main() {
             generate(builder, output.as_deref(), logo.as_deref(), None, None);
         }
         Some(Commands::Interactive) | None => {
-            run_interactive();
+            if let Err(e) = run_interactive() {
+                eprintln!("{} {}", "Error:".red(), e);
+                std::process::exit(1);
+            }
+            Ok(())
         }
+    };
+
+    if let Err(e) = result {
+        eprintln!("{}", e);
+        std::process::exit(1);
     }
 }
 
 fn run_simple_mode(cli: &Cli, input: String) {
-    let fg_color = parse_hex_color(&cli.fg).unwrap_or([0, 0, 0, 255]);
-    let bg_color = parse_hex_color(&cli.bg).unwrap_or([255, 255, 255, 255]);
+    let fg_color = parse_hex_color(&cli.fg).unwrap_or(BLACK);
+    let bg_color = parse_hex_color(&cli.bg).unwrap_or(WHITE);
 
     let builder = QRBuilder::new()
         .text(input)
         .error_correction(cli.error_correction_level.into())
         .colors(fg_color, bg_color);
-
-    if let Some(path) = &cli.output {
-        if path.exists() && !cli.force {
-            eprintln!(
-                "Error: File '{}' already exists. Use --force to overwrite.",
-                path.display()
-            );
-            std::process::exit(1);
-        }
-    }
 
     generate(
         builder,
@@ -237,7 +239,22 @@ fn run_simple_mode(cli: &Cli, input: String) {
         None,
         Some(cli.scale),
         Some(cli.border),
-    );
+        cli.force,
+    )
+}
+
+fn validate_output_path(path: &Path) -> Result<(), String> {
+    if path.is_absolute() {
+        return Err("Absolute paths are not allowed for security reasons. Please use a relative path within the current directory.".to_string());
+    }
+
+    for component in path.components() {
+        if matches!(component, Component::ParentDir) {
+            return Err("Path traversal (using '..') is not allowed for security reasons.".to_string());
+        }
+    }
+
+    Ok(())
 }
 
 fn generate(
@@ -246,12 +263,13 @@ fn generate(
     logo_path: Option<&Path>,
     scale: Option<u32>,
     border: Option<u32>,
-) {
+    force: bool,
+) -> Result<(), String> {
     let pb = ProgressBar::new_spinner();
     pb.set_style(
         ProgressStyle::default_spinner()
             .template("{spinner:.green} {msg}")
-            .unwrap(),
+            .expect("Failed to initialize static progress bar template"),
     );
     pb.set_message("Generating QR Code...");
     pb.enable_steady_tick(Duration::from_millis(100));
@@ -262,18 +280,34 @@ fn generate(
                 pb.finish_with_message("Generated!");
 
                 if let Some(path) = output {
+                    if let Err(e) = validate_output_path(&path) {
+                        pb.finish_and_clear();
+                        return Err(format!("{} {}", "Security Error:".red(), e));
+                    }
+
+                    if path.exists() && !force {
+                        pb.finish_and_clear();
+                        return Err(format!(
+                            "{} File '{}' already exists. Use --force to overwrite.",
+                            "Error:".red(),
+                            path.display()
+                        ));
+                    }
+
                     let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("png");
 
                     if extension.eq_ignore_ascii_case("svg") {
                         match generator.to_svg() {
                             Ok(svg) => {
                                 if let Err(e) = fs::write(&path, svg) {
-                                    eprintln!("{} {}", "Error saving SVG:".red(), e);
+                                    return Err(format!("{} {}", "Error saving SVG:".red(), e));
                                 } else {
                                     println!("{} {}", "Saved to".green(), path.display());
                                 }
                             }
-                            Err(e) => eprintln!("{} {}", "Error generating SVG:".red(), e),
+                            Err(e) => {
+                                return Err(format!("{} {}", "Error generating SVG:".red(), e))
+                            }
                         }
                     } else {
                         let logo_img = if let Some(l_path) = logo_path {
@@ -293,26 +327,9 @@ fn generate(
 
                         let size = if let Some(s) = scale {
                             let width_modules = qr.width() as u32;
-                            // Approximate calculation assuming qrcode adds quiet zone (which is usually 4)
-                            // We use `border` arg only if we can customize it, but qrcode's render logic
-                            // is usually fixed to 4 or 0 (quiet_zone bool).
-                            // If border is specified, we can try to approximate.
-                            // If user sets border=1, but qrcode lib forces 4, it's not exact.
-                            // However, strictly supporting arbitrary border requires manual drawing.
-                            // For now, we scale based on module width + reasonable padding.
-                            // The `border` param is currently unused in calculation to avoid misleading behavior,
-                            // unless we implement manual border drawing.
-                            // To satisfy the user requirement "Border size ... [default: 1]",
-                            // we should probably try to respect it.
-
-                            // Let's assume for this iteration we use the standard 4-module quiet zone
-                            // provided by `qrcode` crate's `to_image` equivalent logic in `QRGenerator`,
-                            // OR we accept that `border` might be ignored if we don't change `QRGenerator`.
-
-                            // Wait, `QRGenerator::to_image` calls `qr.render::<Luma<u8>>().min_dimensions(size, size).build()`.
-                            // This uses the default quiet zone (4).
-                            // If I want to support border=1, I need to change `QRGenerator`.
-                            // I'll keep it simple for now and just silence the warning.
+                            // `qrcode` library uses a fixed quiet zone of 4 modules on each side.
+                            // The `border` parameter is currently ignored to maintain consistency
+                            // with the underlying library's default rendering behavior.
                             let _ = border;
 
                             (width_modules + 8) * s
@@ -323,12 +340,14 @@ fn generate(
                         match generator.to_png(size, logo_img.as_ref()) {
                             Ok(bytes) => {
                                 if let Err(e) = fs::write(&path, bytes) {
-                                    eprintln!("{} {}", "Error saving PNG:".red(), e);
+                                    return Err(format!("{} {}", "Error saving PNG:".red(), e));
                                 } else {
                                     println!("{} {}", "Saved to".green(), path.display());
                                 }
                             }
-                            Err(e) => eprintln!("{} {}", "Error encoding PNG:".red(), e),
+                            Err(e) => {
+                                return Err(format!("{} {}", "Error encoding PNG:".red(), e))
+                            }
                         }
                     }
                 } else {
@@ -339,27 +358,27 @@ fn generate(
                         .build();
                     println!("\n{}", string);
                 }
+                Ok(())
             }
             Err(e) => {
                 pb.finish_and_clear();
-                eprintln!("{} {}", "Error:".red(), e);
+                Err(format!("{} {}", "Error:".red(), e))
             }
         },
         Err(e) => {
             pb.finish_and_clear();
-            eprintln!("{} {}", "Error:".red(), e);
+            Err(format!("{} {}", "Error:".red(), e))
         }
     }
 }
 
-fn run_interactive() {
+fn run_interactive() -> std::io::Result<()> {
     let selections = &["URL", "Text", "Contact"];
     let selection = Select::with_theme(&ColorfulTheme::default())
         .with_prompt("Select QR Code Type")
         .default(0)
         .items(&selections[..])
-        .interact()
-        .unwrap();
+        .interact()?;
 
     let builder = QRBuilder::new();
 
@@ -367,13 +386,11 @@ fn run_interactive() {
         0 => {
             let url: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Enter URL")
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
             let output: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Output file (optional, leave empty for terminal)")
                 .allow_empty(true)
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
 
             let path = if output.is_empty() {
                 None
@@ -385,13 +402,11 @@ fn run_interactive() {
         1 => {
             let text: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Enter Text")
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
             let output: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Output file (optional)")
                 .allow_empty(true)
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
             let path = if output.is_empty() {
                 None
             } else {
@@ -403,33 +418,27 @@ fn run_interactive() {
             let first_name: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("First Name")
                 .allow_empty(true)
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
             let last_name: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Last Name")
                 .allow_empty(true)
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
             let email: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Email")
                 .allow_empty(true)
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
             let phone: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Phone")
                 .allow_empty(true)
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
             let organization: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Organization")
                 .allow_empty(true)
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
             let website: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Website")
                 .allow_empty(true)
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
 
             let contact = ContactData {
                 first_name,
@@ -443,21 +452,47 @@ fn run_interactive() {
             let output: String = Input::with_theme(&ColorfulTheme::default())
                 .with_prompt("Output file (optional)")
                 .allow_empty(true)
-                .interact_text()
-                .unwrap();
+                .interact_text()?;
             let path = if output.is_empty() {
                 None
             } else {
                 Some(PathBuf::from(output))
             };
-            generate(
+            if let Err(e) = generate(
                 builder.data(QRData::Contact(contact)),
                 path.as_deref(),
                 None,
                 None,
                 None,
-            );
+                false,
+            ) {
+                eprintln!("{}", e);
+            }
         }
         _ => {}
+    }
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod security_tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn test_validate_output_path() {
+        // Safe paths
+        assert!(validate_output_path(Path::new("test.png")).is_ok());
+        assert!(validate_output_path(Path::new("dir/test.png")).is_ok());
+        assert!(validate_output_path(Path::new("./test.png")).is_ok());
+
+        // Unsafe paths - Absolute
+        assert!(validate_output_path(Path::new("/tmp/test.png")).is_err());
+
+        // Unsafe paths - Traversal
+        assert!(validate_output_path(Path::new("../test.png")).is_err());
+        assert!(validate_output_path(Path::new("dir/../../test.png")).is_err());
+        assert!(validate_output_path(Path::new("dir/..")).is_err());
     }
 }
