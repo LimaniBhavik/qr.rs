@@ -179,10 +179,16 @@ impl QRGenerator {
 
     pub fn to_svg(&self) -> Result<String, QRError> {
         let qr = self.generate()?;
-        let mut binding = qr.render::<qrcode::render::svg::Color>();
-        let builder = binding.min_dimensions(200, 200);
 
-        // Use default colors for now due to lifetime issues with custom colors in SVG builder
+        let fg_hex = format!("#{:02X}{:02X}{:02X}", self.foreground_color.0[0], self.foreground_color.0[1], self.foreground_color.0[2]);
+        let bg_hex = format!("#{:02X}{:02X}{:02X}", self.background_color.0[0], self.background_color.0[1], self.background_color.0[2]);
+
+        let mut binding = qr.render::<qrcode::render::svg::Color>();
+        let builder = binding
+            .min_dimensions(200, 200)
+            .dark_color(qrcode::render::svg::Color(&fg_hex))
+            .light_color(qrcode::render::svg::Color(&bg_hex));
+
         Ok(builder.build())
     }
 }
@@ -345,5 +351,26 @@ mod tests {
 
         assert!(svg.contains("<svg"));
         assert!(svg.contains("viewBox"));
+    }
+
+    #[test]
+    fn test_to_svg_custom_colors() {
+        let fg = [255, 0, 0, 255]; // Red
+        let bg = [0, 255, 0, 255]; // Green
+
+        let generator = QRBuilder::new()
+            .text("SVG Custom Colors Test")
+            .colors(fg, bg)
+            .build()
+            .expect("Should build with custom colors");
+
+        let result = generator.to_svg();
+        assert!(result.is_ok());
+        let svg = result.unwrap();
+
+        assert!(svg.contains("<svg"));
+        assert!(svg.contains("viewBox"));
+        assert!(svg.contains("#FF0000")); // Check for foreground color
+        assert!(svg.contains("#00FF00")); // Check for background color
     }
 }
