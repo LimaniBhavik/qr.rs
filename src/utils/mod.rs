@@ -12,7 +12,7 @@ pub fn parse_hex_color(hex: &str) -> Option<[u8; 4]> {
         return None;
     }
 
-    let mut rgba = [0, 0, 0, 255];
+    let mut rgba = BLACK;
     for (i, chunk) in hex.as_bytes().chunks(2).enumerate() {
         let chunk_str = std::str::from_utf8(chunk).ok()?;
         rgba[i] = u8::from_str_radix(chunk_str, 16).ok()?;
