@@ -6,7 +6,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use qr_rs::utils::{parse_hex_color, BLACK, WHITE};
 use qr_rs::{ContactData, QRBuilder, QRData};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Component, Path, PathBuf};
 use std::time::Duration;
 
 #[derive(Parser)]
@@ -154,11 +154,14 @@ fn main() {
 
     // If input is provided, run in simpler mode
     if let Some(ref input_string) = cli.input {
-        run_simple_mode(&cli, input_string.clone());
+        if let Err(e) = run_simple_mode(&cli, input_string.clone()) {
+            eprintln!("{}", e);
+            std::process::exit(1);
+        }
         return;
     }
 
-    match cli.command {
+    let result = match cli.command {
         Some(Commands::Url {
             url,
             output,
@@ -168,7 +171,7 @@ fn main() {
             logo,
         }) => {
             let builder = configure_builder(ec_level, foreground, background).url(url);
-            generate(builder, output, logo, None, None);
+            generate(builder, output, logo, None, None, cli.force)
         }
         Some(Commands::Text {
             text,
@@ -179,7 +182,7 @@ fn main() {
             logo,
         }) => {
             let builder = configure_builder(ec_level, foreground, background).text(text);
-            generate(builder, output, logo, None, None);
+            generate(builder, output, logo, None, None, cli.force)
         }
         Some(Commands::Contact {
             first_name,
@@ -204,18 +207,24 @@ fn main() {
             };
             let builder =
                 configure_builder(ec_level, foreground, background).data(QRData::Contact(contact));
-            generate(builder, output, logo, None, None);
+            generate(builder, output, logo, None, None, cli.force)
         }
         Some(Commands::Interactive) | None => {
             if let Err(e) = run_interactive() {
                 eprintln!("{} {}", "Error:".red(), e);
                 std::process::exit(1);
             }
+            Ok(())
         }
+    };
+
+    if let Err(e) = result {
+        eprintln!("{}", e);
+        std::process::exit(1);
     }
 }
 
-fn run_simple_mode(cli: &Cli, input: String) {
+fn run_simple_mode(cli: &Cli, input: String) -> Result<(), String> {
     let fg_color = parse_hex_color(&cli.fg).unwrap_or(BLACK);
     let bg_color = parse_hex_color(&cli.bg).unwrap_or(WHITE);
 
@@ -224,23 +233,28 @@ fn run_simple_mode(cli: &Cli, input: String) {
         .error_correction(cli.error_correction_level.into())
         .colors(fg_color, bg_color);
 
-    if let Some(path) = &cli.output {
-        if path.exists() && !cli.force {
-            eprintln!(
-                "Error: File '{}' already exists. Use --force to overwrite.",
-                path.display()
-            );
-            std::process::exit(1);
-        }
-    }
-
     generate(
         builder,
         cli.output.clone(),
         None,
         Some(cli.scale),
         Some(cli.border),
-    );
+        cli.force,
+    )
+}
+
+fn validate_output_path(path: &Path) -> Result<(), String> {
+    if path.is_absolute() {
+        return Err("Absolute paths are not allowed for security reasons. Please use a relative path within the current directory.".to_string());
+    }
+
+    for component in path.components() {
+        if matches!(component, Component::ParentDir) {
+            return Err("Path traversal (using '..') is not allowed for security reasons.".to_string());
+        }
+    }
+
+    Ok(())
 }
 
 fn generate(
@@ -249,7 +263,8 @@ fn generate(
     logo_path: Option<PathBuf>,
     scale: Option<u32>,
     border: Option<u32>,
-) {
+    force: bool,
+) -> Result<(), String> {
     let pb = ProgressBar::new_spinner();
     pb.set_style(
         ProgressStyle::default_spinner()
@@ -265,18 +280,34 @@ fn generate(
                 pb.finish_with_message("Generated!");
 
                 if let Some(path) = output {
+                    if let Err(e) = validate_output_path(&path) {
+                        pb.finish_and_clear();
+                        return Err(format!("{} {}", "Security Error:".red(), e));
+                    }
+
+                    if path.exists() && !force {
+                        pb.finish_and_clear();
+                        return Err(format!(
+                            "{} File '{}' already exists. Use --force to overwrite.",
+                            "Error:".red(),
+                            path.display()
+                        ));
+                    }
+
                     let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("png");
 
                     if extension.eq_ignore_ascii_case("svg") {
                         match generator.to_svg() {
                             Ok(svg) => {
                                 if let Err(e) = fs::write(&path, svg) {
-                                    eprintln!("{} {}", "Error saving SVG:".red(), e);
+                                    return Err(format!("{} {}", "Error saving SVG:".red(), e));
                                 } else {
                                     println!("{} {}", "Saved to".green(), path.display());
                                 }
                             }
-                            Err(e) => eprintln!("{} {}", "Error generating SVG:".red(), e),
+                            Err(e) => {
+                                return Err(format!("{} {}", "Error generating SVG:".red(), e))
+                            }
                         }
                     } else {
                         let logo_img = if let Some(l_path) = logo_path {
@@ -309,12 +340,14 @@ fn generate(
                         match generator.to_png(size, logo_img.as_ref()) {
                             Ok(bytes) => {
                                 if let Err(e) = fs::write(&path, bytes) {
-                                    eprintln!("{} {}", "Error saving PNG:".red(), e);
+                                    return Err(format!("{} {}", "Error saving PNG:".red(), e));
                                 } else {
                                     println!("{} {}", "Saved to".green(), path.display());
                                 }
                             }
-                            Err(e) => eprintln!("{} {}", "Error encoding PNG:".red(), e),
+                            Err(e) => {
+                                return Err(format!("{} {}", "Error encoding PNG:".red(), e))
+                            }
                         }
                     }
                 } else {
@@ -325,15 +358,16 @@ fn generate(
                         .build();
                     println!("\n{}", string);
                 }
+                Ok(())
             }
             Err(e) => {
                 pb.finish_and_clear();
-                eprintln!("{} {}", "Error:".red(), e);
+                Err(format!("{} {}", "Error:".red(), e))
             }
         },
         Err(e) => {
             pb.finish_and_clear();
-            eprintln!("{} {}", "Error:".red(), e);
+            Err(format!("{} {}", "Error:".red(), e))
         }
     }
 }
@@ -363,7 +397,9 @@ fn run_interactive() -> std::io::Result<()> {
             } else {
                 Some(PathBuf::from(output))
             };
-            generate(builder.url(url), path, None, None, None);
+            if let Err(e) = generate(builder.url(url), path, None, None, None, false) {
+                eprintln!("{}", e);
+            }
         }
         1 => {
             let text: String = Input::with_theme(&ColorfulTheme::default())
@@ -378,7 +414,9 @@ fn run_interactive() -> std::io::Result<()> {
             } else {
                 Some(PathBuf::from(output))
             };
-            generate(builder.text(text), path, None, None, None);
+            if let Err(e) = generate(builder.text(text), path, None, None, None, false) {
+                eprintln!("{}", e);
+            }
         }
         2 => {
             let first_name: String = Input::with_theme(&ColorfulTheme::default())
@@ -424,16 +462,41 @@ fn run_interactive() -> std::io::Result<()> {
             } else {
                 Some(PathBuf::from(output))
             };
-            generate(
+            if let Err(e) = generate(
                 builder.data(QRData::Contact(contact)),
                 path,
                 None,
                 None,
                 None,
-            );
+                false,
+            ) {
+                eprintln!("{}", e);
+            }
         }
         _ => {}
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod security_tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn test_validate_output_path() {
+        // Safe paths
+        assert!(validate_output_path(Path::new("test.png")).is_ok());
+        assert!(validate_output_path(Path::new("dir/test.png")).is_ok());
+        assert!(validate_output_path(Path::new("./test.png")).is_ok());
+
+        // Unsafe paths - Absolute
+        assert!(validate_output_path(Path::new("/tmp/test.png")).is_err());
+
+        // Unsafe paths - Traversal
+        assert!(validate_output_path(Path::new("../test.png")).is_err());
+        assert!(validate_output_path(Path::new("dir/../../test.png")).is_err());
+        assert!(validate_output_path(Path::new("dir/..")).is_err());
+    }
 }
