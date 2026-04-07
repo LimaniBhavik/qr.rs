@@ -6,7 +6,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use qr_rs::utils::parse_hex_color;
 use qr_rs::{ContactData, QRBuilder, QRData};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 #[derive(Parser)]
@@ -168,7 +168,7 @@ fn main() {
             logo,
         }) => {
             let builder = configure_builder(ec_level, foreground, background).url(url);
-            generate(builder, output, logo, None, None);
+            generate(builder, output.as_deref(), logo.as_deref(), None, None);
         }
         Some(Commands::Text {
             text,
@@ -179,7 +179,7 @@ fn main() {
             logo,
         }) => {
             let builder = configure_builder(ec_level, foreground, background).text(text);
-            generate(builder, output, logo, None, None);
+            generate(builder, output.as_deref(), logo.as_deref(), None, None);
         }
         Some(Commands::Contact {
             first_name,
@@ -204,7 +204,7 @@ fn main() {
             };
             let builder =
                 configure_builder(ec_level, foreground, background).data(QRData::Contact(contact));
-            generate(builder, output, logo, None, None);
+            generate(builder, output.as_deref(), logo.as_deref(), None, None);
         }
         Some(Commands::Interactive) | None => {
             run_interactive();
@@ -233,7 +233,7 @@ fn run_simple_mode(cli: &Cli, input: String) {
 
     generate(
         builder,
-        cli.output.clone(),
+        cli.output.as_deref(),
         None,
         Some(cli.scale),
         Some(cli.border),
@@ -242,8 +242,8 @@ fn run_simple_mode(cli: &Cli, input: String) {
 
 fn generate(
     builder: QRBuilder,
-    output: Option<PathBuf>,
-    logo_path: Option<PathBuf>,
+    output: Option<&Path>,
+    logo_path: Option<&Path>,
     scale: Option<u32>,
     border: Option<u32>,
 ) {
@@ -380,7 +380,7 @@ fn run_interactive() {
             } else {
                 Some(PathBuf::from(output))
             };
-            generate(builder.url(url), path, None, None, None);
+            generate(builder.url(url), path.as_deref(), None, None, None);
         }
         1 => {
             let text: String = Input::with_theme(&ColorfulTheme::default())
@@ -397,7 +397,7 @@ fn run_interactive() {
             } else {
                 Some(PathBuf::from(output))
             };
-            generate(builder.text(text), path, None, None, None);
+            generate(builder.text(text), path.as_deref(), None, None, None);
         }
         2 => {
             let first_name: String = Input::with_theme(&ColorfulTheme::default())
@@ -452,7 +452,7 @@ fn run_interactive() {
             };
             generate(
                 builder.data(QRData::Contact(contact)),
-                path,
+                path.as_deref(),
                 None,
                 None,
                 None,
