@@ -224,7 +224,7 @@ fn main() {
     }
 }
 
-fn run_simple_mode(cli: &Cli, input: String) -> Result<(), String> {
+fn run_simple_mode(cli: &Cli, input: String) {
     let fg_color = parse_hex_color(&cli.fg).unwrap_or(BLACK);
     let bg_color = parse_hex_color(&cli.bg).unwrap_or(WHITE);
 
