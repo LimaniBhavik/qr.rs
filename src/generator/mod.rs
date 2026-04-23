@@ -68,14 +68,12 @@ impl QRBuilder {
     }
 
     pub fn build(self) -> Result<QRGenerator, QRError> {
-        let data = self
+        let qr_data = self
             .data
             .ok_or_else(|| QRError::InvalidData("No data provided".to_string()))?;
 
         Ok(QRGenerator {
-            data: self
-                .data
-                .expect("data should be checked for None before calling unwrap"),
+            data: qr_data,
             error_correction: self.error_correction,
             foreground_color: self.foreground_color,
             background_color: self.background_color,
@@ -147,7 +145,9 @@ impl QRGenerator {
             buffer.extend_from_slice(&color);
         }
 
-        let mut image = RgbaImage::from_raw(width, height, buffer).unwrap();
+        let mut image = RgbaImage::from_raw(width, height, buffer).ok_or_else(|| {
+            QRError::GenerationError("Failed to create image from raw buffer".to_string())
+        })?;
 
         if let Some(logo_img) = logo {
             info!("Adding logo to QR code");
