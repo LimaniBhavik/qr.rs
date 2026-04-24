@@ -377,6 +377,57 @@ mod tests {
     }
 
     #[test]
+    fn test_vcard_unicode() {
+        let contact = ContactData {
+            first_name: "Jürgen".to_string(),
+            last_name: "Müller, Sr.".to_string(),
+            organization: "🏢 Unicode Corp".to_string(),
+            ..Default::default()
+        };
+        let vcard = generate_vcard(&contact);
+        // Note: Comma in "Müller, Sr." should be escaped to "Müller\, Sr."
+        assert!(vcard.contains("FN:Jürgen Müller\\, Sr."));
+        assert!(vcard.contains("N:Müller\\, Sr.;Jürgen;;;"));
+        assert!(vcard.contains("ORG:🏢 Unicode Corp"));
+    }
+
+    #[test]
+    fn test_vcard_partial_data() {
+        // Only first name
+        let only_first = ContactData {
+            first_name: "John".to_string(),
+            ..Default::default()
+        };
+        let vcard_only_first = generate_vcard(&only_first);
+        // Trailing space after "John" should be removed by pop()
+        assert!(vcard_only_first.contains("FN:John\n"));
+        assert!(vcard_only_first.contains("N:;John;;;\n"));
+
+        // Only last name
+        let only_last = ContactData {
+            last_name: "Doe".to_string(),
+            ..Default::default()
+        };
+        let vcard_only_last = generate_vcard(&only_last);
+        // Note: Currently pushes " " + last_name if first_name is empty
+        assert!(vcard_only_last.contains("FN: Doe\n"));
+        assert!(vcard_only_last.contains("N:Doe;;;;\n"));
+    }
+
+    #[test]
+    fn test_vcard_empty_names() {
+        let empty_names = ContactData {
+            email: "test@example.com".to_string(),
+            ..Default::default()
+        };
+        let vcard = generate_vcard(&empty_names);
+        // VERSION:3.0 contains "N:", so we check for "\nN:" to ensure the N field isn't present
+        assert!(!vcard.contains("\nFN:"));
+        assert!(!vcard.contains("\nN:"));
+        assert!(vcard.contains("EMAIL:test@example.com"));
+    }
+
+    #[test]
     fn test_is_valid_email() {
         // Valid emails - Standard
         // Standard valid emails

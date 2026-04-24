@@ -1,6 +1,7 @@
 use crate::error::QRError;
 use crate::formats::{format_url, generate_geo_uri, generate_vcard, generate_wifi, QRData};
 use crate::utils::{BLACK, WHITE};
+use std::borrow::Cow;
 use image::{DynamicImage, ImageFormat, Luma, Rgba, RgbaImage};
 use imageproc::drawing::draw_filled_rect_mut;
 use imageproc::rect::Rect;
@@ -103,23 +104,23 @@ impl QRGenerator {
         debug!("Generating QR code for data: {:?}", self.data);
 
         let content = match &self.data {
-            QRData::URL(url) => format_url(url),
-            QRData::Text(text) => text.clone(),
+            QRData::URL(url) => Cow::Owned(format_url(url)),
+            QRData::Text(text) => Cow::Borrowed(text.as_str()),
             QRData::Contact(contact) => {
                 contact.validate()?;
-                generate_vcard(contact)
+                Cow::Owned(generate_vcard(contact))
             }
             QRData::Wifi(wifi) => {
                 wifi.validate()?;
-                generate_wifi(wifi)
+                Cow::Owned(generate_wifi(wifi))
             }
             QRData::Location(location) => {
                 location.validate()?;
-                generate_geo_uri(location)
+                Cow::Owned(generate_geo_uri(location))
             }
         };
 
-        QrCode::with_error_correction_level(&content, self.error_correction)
+        QrCode::with_error_correction_level(content.as_ref(), self.error_correction)
             .map_err(QRError::QrGenerationError)
     }
 
