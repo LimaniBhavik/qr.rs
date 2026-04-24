@@ -319,9 +319,20 @@ mod tests {
 
     #[test]
     fn test_format_url() {
+        // Standard cases
         assert_eq!(format_url("example.com"), "https://example.com");
         assert_eq!(format_url("https://example.com"), "https://example.com");
         assert_eq!(format_url("http://example.com"), "http://example.com");
+
+        // Edge cases - Empty and whitespace
+        assert_eq!(format_url(""), "");
+        assert_eq!(format_url("   "), "");
+        assert_eq!(format_url("  example.com  "), "https://example.com");
+
+        // Edge cases - Protocol case-insensitivity and trimming
+        assert_eq!(format_url("HTTP://example.com"), "HTTP://example.com");
+        assert_eq!(format_url("Https://example.com"), "Https://example.com");
+        assert_eq!(format_url("  http://example.com  "), "http://example.com");
     }
 
     #[test]
