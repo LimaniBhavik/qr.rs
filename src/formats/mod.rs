@@ -176,9 +176,7 @@ fn escape_vcard_value_to(s: &str, out: &mut String) {
 
     for (i, &b) in bytes.iter().enumerate() {
         if VCARD_ESCAPE_TABLE[b as usize] != 0 {
-            out.push_str(unsafe {
-                std::str::from_utf8_unchecked(bytes.get_unchecked(last_pos..i))
-            });
+            out.push_str(&s[last_pos..i]);
             let escaped = match b {
                 b'\\' => "\\\\",
                 b',' => "\\,",
@@ -192,9 +190,7 @@ fn escape_vcard_value_to(s: &str, out: &mut String) {
             last_pos = i + 1;
         }
     }
-    out.push_str(unsafe {
-        std::str::from_utf8_unchecked(bytes.get_unchecked(last_pos..bytes.len()))
-    });
+    out.push_str(&s[last_pos..]);
 }
 
 pub fn generate_vcard(contact: &ContactData) -> String {
@@ -267,9 +263,7 @@ fn escape_wifi_string_to(s: &str, out: &mut String) {
 
     for (i, &b) in bytes.iter().enumerate() {
         if WIFI_ESCAPE_TABLE[b as usize] != 0 {
-            out.push_str(unsafe {
-                std::str::from_utf8_unchecked(bytes.get_unchecked(last_pos..i))
-            });
+            out.push_str(&s[last_pos..i]);
             let escaped = match b {
                 b'\\' => "\\\\",
                 b';' => "\\;",
@@ -282,9 +276,7 @@ fn escape_wifi_string_to(s: &str, out: &mut String) {
             last_pos = i + 1;
         }
     }
-    out.push_str(unsafe {
-        std::str::from_utf8_unchecked(bytes.get_unchecked(last_pos..bytes.len()))
-    });
+    out.push_str(&s[last_pos..]);
 }
 
 pub fn generate_wifi(wifi: &WifiData) -> String {
