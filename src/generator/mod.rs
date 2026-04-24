@@ -146,9 +146,8 @@ impl QRGenerator {
             buffer.extend_from_slice(&color);
         }
 
-        let mut image = RgbaImage::from_raw(width, height, buffer).ok_or_else(|| {
-            QRError::GenerationError("Failed to create image from raw buffer".to_string())
-        })?;
+        let mut image = RgbaImage::from_raw(width, height, buffer)
+            .ok_or_else(|| QRError::GenerationError("Failed to create RgbaImage from raw buffer".to_string()))?;
 
         if let Some(logo_img) = logo {
             info!("Adding logo to QR code");
