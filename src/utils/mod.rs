@@ -13,9 +13,24 @@ pub fn parse_hex_color(hex: &str) -> Option<[u8; 4]> {
     }
 
     let mut rgba = BLACK;
-    for (i, chunk) in hex.as_bytes().chunks(2).enumerate() {
-        let chunk_str = std::str::from_utf8(chunk).ok()?;
-        rgba[i] = u8::from_str_radix(chunk_str, 16).ok()?;
+    let bytes = hex.as_bytes();
+    for i in 0..(hex.len() / 2) {
+        let b1 = bytes[i * 2];
+        let b2 = bytes[i * 2 + 1];
+
+        let h1 = match b1 {
+            b'0'..=b'9' => b1 - b'0',
+            b'a'..=b'f' => b1 - b'a' + 10,
+            b'A'..=b'F' => b1 - b'A' + 10,
+            _ => return None,
+        };
+        let h2 = match b2 {
+            b'0'..=b'9' => b2 - b'0',
+            b'a'..=b'f' => b2 - b'a' + 10,
+            b'A'..=b'F' => b2 - b'A' + 10,
+            _ => return None,
+        };
+        rgba[i] = (h1 << 4) | h2;
     }
     Some(rgba)
 }
