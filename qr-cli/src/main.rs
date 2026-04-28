@@ -538,7 +538,7 @@ mod security_tests {
 
     #[test]
     fn test_validate_output_path() {
-        let _ = std::fs::create_dir_all("dir");
+        let _ = std::fs::create_dir_all("test_safe_dir");
         // Safe paths
         assert!(validate_output_path(Path::new("test.png")).is_ok());
         assert!(validate_output_path(Path::new("test_safe_dir/test.png")).is_ok());
@@ -552,6 +552,6 @@ mod security_tests {
         assert!(validate_output_path(Path::new("test_safe_dir/../../test.png")).is_err());
         assert!(validate_output_path(Path::new("test_safe_dir/..")).is_err());
 
-        let _ = std::fs::remove_dir(&safe_dir);
+        let _ = std::fs::remove_dir("test_safe_dir");
     }
 }
