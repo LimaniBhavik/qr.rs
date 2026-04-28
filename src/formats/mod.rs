@@ -60,7 +60,7 @@ fn is_valid_url(url: &str) -> bool {
     static URL_REGEX: OnceLock<Regex> = OnceLock::new();
     URL_REGEX
         .get_or_init(|| {
-            Regex::new(r"^(https?://)?([\w\d-]+\.)+[\w\d-]+(/.*)?$")
+            Regex::new(r"^(?:https?://)?[\w-]+(?:\.[\w-]+)+(?:/.*)?$")
                 .expect("Invalid URL regex pattern")
         })
         .is_match(url)
@@ -428,6 +428,32 @@ mod tests {
         assert!(!vcard.contains("\nFN:"));
         assert!(!vcard.contains("\nN:"));
         assert!(vcard.contains("EMAIL:test@example.com"));
+    }
+
+    #[test]
+    fn test_is_valid_url() {
+        // Valid URLs
+        assert!(is_valid_url("google.com"));
+        assert!(is_valid_url("www.google.com"));
+        assert!(is_valid_url("https://example.com"));
+        assert!(is_valid_url("http://example.com/path"));
+        assert!(is_valid_url("example.com/path?query=1#fragment"));
+        assert!(is_valid_url("sub.domain.co.uk"));
+        assert!(is_valid_url("a.b"));
+
+        // Invalid URLs
+        assert!(!is_valid_url("localhost")); // Requires at least one dot
+        assert!(!is_valid_url("google."));
+        assert!(!is_valid_url(".google"));
+        assert!(!is_valid_url("http://"));
+        assert!(!is_valid_url("https://.com"));
+
+        // ReDoS protection test
+        let evil_url = format!("{}!", "a.".repeat(100));
+        assert!(!is_valid_url(&evil_url));
+
+        let evil_url_2 = format!("{}!", "a".repeat(100));
+        assert!(!is_valid_url(&evil_url_2));
     }
 
     #[test]
