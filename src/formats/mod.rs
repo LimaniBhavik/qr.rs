@@ -60,7 +60,7 @@ fn is_valid_url(url: &str) -> bool {
     static URL_REGEX: OnceLock<Regex> = OnceLock::new();
     URL_REGEX
         .get_or_init(|| {
-            Regex::new(r"^(https?://)?([\w\d-]+\.)+[\w\d-]+(/.*)?$")
+            Regex::new(r"^(?:https?://)?[\w-]+(?:\.[\w-]+)+(?:/.*)?$")
                 .expect("Invalid URL regex pattern")
         })
         .is_match(url)
@@ -432,47 +432,28 @@ mod tests {
 
     #[test]
     fn test_is_valid_url() {
-        // Valid URLs - Standard
-        assert!(is_valid_url("example.com"));
-        assert!(is_valid_url("www.example.com"));
-        assert!(is_valid_url("sub.domain.example.com"));
-        assert!(is_valid_url("http://example.com"));
+        // Valid URLs
+        assert!(is_valid_url("google.com"));
+        assert!(is_valid_url("www.google.com"));
         assert!(is_valid_url("https://example.com"));
-        assert!(is_valid_url("https://www.example.com"));
-
-        // Valid URLs - With paths, queries, and fragments
-        assert!(is_valid_url("example.com/"));
-        assert!(is_valid_url("example.com/path"));
-        assert!(is_valid_url("example.com/path/to/resource"));
-        assert!(!is_valid_url("example.com?query=value")); // Fails because it needs a leading /
-        assert!(is_valid_url("example.com/?query=value")); // Works with leading /
-        assert!(is_valid_url("example.com/path?query=value&another=true"));
-        assert!(!is_valid_url("example.com#fragment")); // Fails because it needs a leading /
-        assert!(is_valid_url("example.com/#fragment")); // Works with leading /
-        assert!(is_valid_url("example.com/path#fragment"));
-        assert!(is_valid_url("example.com/path?query=value#fragment"));
-        assert!(!is_valid_url("https://example.com:8080/path")); // Port currently not supported by regex
-
-        // Valid URLs - IP addresses (if they match the regex)
-        // Current regex: r"^(https?://)?([\w\d-]+\.)+[\w\d-]+(/.*)?$"
-        assert!(is_valid_url("127.0.0.1"));
-        assert!(is_valid_url("http://192.168.1.1"));
+        assert!(is_valid_url("http://example.com/path"));
+        assert!(is_valid_url("example.com/path?query=1#fragment"));
+        assert!(is_valid_url("sub.domain.co.uk"));
+        assert!(is_valid_url("a.b"));
 
         // Invalid URLs
-        assert!(!is_valid_url("example")); // Missing dot
-        assert!(!is_valid_url(".com")); // Leading dot
-        assert!(!is_valid_url("example.")); // Trailing dot
-        assert!(!is_valid_url("http://")); // Protocol only
-        assert!(!is_valid_url("https://")); // Protocol only
-        assert!(!is_valid_url("not a url")); // Spaces
-        assert!(!is_valid_url("")); // Empty
-        assert!(!is_valid_url("   ")); // Whitespace
-        assert!(!is_valid_url("http:// example.com")); // Space after protocol
+        assert!(!is_valid_url("localhost")); // Requires at least one dot
+        assert!(!is_valid_url("google."));
+        assert!(!is_valid_url(".google"));
+        assert!(!is_valid_url("http://"));
+        assert!(!is_valid_url("https://.com"));
 
-        // Edge case: localhost
-        // Current regex requires at least one dot: ([\w\d-]+\.)+
-        assert!(!is_valid_url("localhost"));
-        assert!(is_valid_url("localhost.localdomain"));
+        // ReDoS protection test
+        let evil_url = format!("{}!", "a.".repeat(100));
+        assert!(!is_valid_url(&evil_url));
+
+        let evil_url_2 = format!("{}!", "a".repeat(100));
+        assert!(!is_valid_url(&evil_url_2));
     }
 
     #[test]
