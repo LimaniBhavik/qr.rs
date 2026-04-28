@@ -2,9 +2,9 @@
 
 <div align="center">
 
-[![Crates.io](https://img.shields.io/crates/v/qr-rs.svg)](https://crates.io/crates/qr-rs)
+[![Crates.io](https://img.shields.io/crates/v/qr-scan-rs.svg)](https://crates.io/crates/qr-scan-rs)
 [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](LICENSE)
-[![Build Status](https://github.com/LimaniBhavik/qr.rs/workflows/CI/badge.svg)](https://github.com/LimaniBhavik/qr.rs/actions)
+[![Build Status](https://github.com/LimaniBhavik/qr-scan-rs/workflows/CI/badge.svg)](https://github.com/LimaniBhavik/qr-scan-rs/actions)
 
 **A comprehensive, multi-target QR code generator for Rust.**
 
@@ -49,8 +49,8 @@ cargo install qr-cli
 Clone the repository and build:
 
 ```bash
-git clone https://github.com/LimaniBhavik/qr.rs.git
-cd qr.rs
+git clone https://github.com/LimaniBhavik/qr-scan-rs.git
+cd qr-scan-rs
 cargo build --release
 ```
 
@@ -136,12 +136,12 @@ To run the web version locally:
 
 ## 📚 Library Integration
 
-You can use `qr-rs` as a library in your own Rust projects.
+You can use `qr-scan-rs` as a library in your own Rust projects.
 
 Add to `Cargo.toml`:
 ```toml
 [dependencies]
-qr-rs = "0.4.0"
+qr-scan-rs = "0.4.1"
 ```
 
 ### Examples
@@ -189,7 +189,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ```
 
 ### Industry Case Studies
-See how `qr.rs` can be applied across different industries:
+See how `qr-scan-rs` can be applied across different industries:
 *   [Retail & E-commerce](docs/case_studies/01_retail_ecommerce.md) - Bulk product tag generation.
 *   [Real Estate](docs/case_studies/02_real_estate.md) - Dynamic property listings.
 *   [Hospitality & Restaurants](docs/case_studies/03_hospitality.md) - Table menu generation.

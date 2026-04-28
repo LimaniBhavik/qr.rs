@@ -1,6 +1,7 @@
 use crate::error::QRError;
 use crate::formats::{format_url, generate_geo_uri, generate_vcard, generate_wifi, QRData};
 use crate::utils::{BLACK, WHITE};
+use std::borrow::Cow;
 use image::{DynamicImage, ImageFormat, Luma, Rgba, RgbaImage};
 use imageproc::drawing::draw_filled_rect_mut;
 use imageproc::rect::Rect;
@@ -68,12 +69,12 @@ impl QRBuilder {
     }
 
     pub fn build(self) -> Result<QRGenerator, QRError> {
-        let data = self
+        let qr_data = self
             .data
             .ok_or_else(|| QRError::InvalidData("No data provided".to_string()))?;
 
         Ok(QRGenerator {
-            data,
+            data: qr_data,
             error_correction: self.error_correction,
             foreground_color: self.foreground_color,
             background_color: self.background_color,
@@ -103,23 +104,23 @@ impl QRGenerator {
         debug!("Generating QR code for data: {:?}", self.data);
 
         let content = match &self.data {
-            QRData::URL(url) => format_url(url),
-            QRData::Text(text) => text.clone(),
+            QRData::URL(url) => Cow::Owned(format_url(url)),
+            QRData::Text(text) => Cow::Borrowed(text.as_str()),
             QRData::Contact(contact) => {
                 contact.validate()?;
-                generate_vcard(contact)
+                Cow::Owned(generate_vcard(contact))
             }
             QRData::Wifi(wifi) => {
                 wifi.validate()?;
-                generate_wifi(wifi)
+                Cow::Owned(generate_wifi(wifi))
             }
             QRData::Location(location) => {
                 location.validate()?;
-                generate_geo_uri(location)
+                Cow::Owned(generate_geo_uri(location))
             }
         };
 
-        QrCode::with_error_correction_level(&content, self.error_correction)
+        QrCode::with_error_correction_level(content.as_ref(), self.error_correction)
             .map_err(QRError::QrGenerationError)
     }
 
@@ -134,15 +135,19 @@ impl QRGenerator {
         let width = qr_image.width();
         let height = qr_image.height();
 
-        let mut image = RgbaImage::new(width, height);
         let fg = self.foreground_color.0;
         let bg = self.background_color.0;
 
         let qr_raw = qr_image.as_raw();
 
-        for (target_chunk, &luma) in image.chunks_exact_mut(4).zip(qr_raw.iter()) {
-            target_chunk.copy_from_slice(if luma == 0 { &fg } else { &bg });
+        let mut buffer = Vec::with_capacity(qr_raw.len() * 4);
+        for &luma in qr_raw {
+            let color = if luma == 0 { fg } else { bg };
+            buffer.extend_from_slice(&color);
         }
+
+        let mut image = RgbaImage::from_raw(width, height, buffer)
+            .ok_or_else(|| QRError::GenerationError("Failed to create RgbaImage from raw buffer".to_string()))?;
 
         if let Some(logo_img) = logo {
             info!("Adding logo to QR code");
@@ -307,8 +312,8 @@ mod tests {
 
         // Create a small 10x10 red square as a dummy logo
         let mut logo_image = RgbaImage::new(10, 10);
-        for pixel in logo_image.pixels_mut() {
-            *pixel = Rgba([255, 0, 0, 255]);
+        for pixel in logo_image.chunks_exact_mut(4) {
+            pixel.copy_from_slice(&[255, 0, 0, 255]);
         }
         let logo = DynamicImage::ImageRgba8(logo_image);
 

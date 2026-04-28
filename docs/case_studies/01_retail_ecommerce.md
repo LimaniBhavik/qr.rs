@@ -5,9 +5,9 @@ In modern retail, connecting physical products to digital experiences is crucial
 
 Generating these codes manually for thousands of SKUs is impractical. The company needs a reliable, scriptable solution to generate high-quality QR codes in bulk as part of their automated catalog publishing pipeline.
 
-## The Solution: `qr.rs` CLI
+## The Solution: `qr-scan-rs` CLI
 
-The `qr.rs` tool suite, specifically the `qr-cli` component, is perfect for this automation.
+The `qr-scan-rs` tool suite, specifically the `qr-cli` component, is perfect for this automation.
 
 ### Why `qr-cli`?
 *   **Scriptability**: Easily integrated into bash scripts or CI/CD pipelines.
@@ -43,7 +43,7 @@ done < catalog.csv
 ```
 
 ## Library Integration
-If the retail backend is written in Rust, they can bypass the CLI and generate codes directly using the `qr-rs` core library.
+If the retail backend is written in Rust, they can bypass the CLI and generate codes directly using the `qr-scan-rs` core library.
 
 Check out the executable example:
 ```bash

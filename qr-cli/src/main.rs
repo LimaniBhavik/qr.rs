@@ -171,7 +171,14 @@ fn main() {
             logo,
         }) => {
             let builder = configure_builder(ec_level, foreground, background).url(url);
-            generate(builder, output.as_deref(), logo.as_deref(), None, None, cli.force)
+            generate(
+                builder,
+                output.as_deref(),
+                logo.as_deref(),
+                None,
+                None,
+                cli.force,
+            )
         }
         Some(Commands::Text {
             text,
@@ -182,7 +189,14 @@ fn main() {
             logo,
         }) => {
             let builder = configure_builder(ec_level, foreground, background).text(text);
-            generate(builder, output.as_deref(), logo.as_deref(), None, None, cli.force)
+            generate(
+                builder,
+                output.as_deref(),
+                logo.as_deref(),
+                None,
+                None,
+                cli.force,
+            )
         }
         Some(Commands::Contact {
             first_name,
@@ -207,11 +221,16 @@ fn main() {
             };
             let builder =
                 configure_builder(ec_level, foreground, background).data(QRData::Contact(contact));
-            generate(builder, output.as_deref(), logo.as_deref(), None, None, cli.force)
+            generate(
+                builder,
+                output.as_deref(),
+                logo.as_deref(),
+                None,
+                None,
+                cli.force,
+            )
         }
-        Some(Commands::Interactive) | None => {
-            run_interactive()
-        }
+        Some(Commands::Interactive) | None => run_interactive(),
     };
 
     if let Err(e) = result {
@@ -249,6 +268,34 @@ fn validate_output_path(path: &Path) -> Result<(), String> {
             return Err(
                 "Path traversal (using '..') is not allowed for security reasons.".to_string(),
             );
+        }
+    }
+
+    // Resolve the parent directory and ensure it does not escape the current working directory
+    // or follow symlinks to arbitrary locations.
+    let current_dir = std::env::current_dir()
+        .and_then(|d| d.canonicalize())
+        .map_err(|e| format!("Could not resolve current directory: {}", e))?;
+
+    let parent = path.parent().unwrap_or_else(|| Path::new(""));
+    let parent_path = if parent.as_os_str().is_empty() {
+        Path::new(".")
+    } else {
+        parent
+    };
+
+    let resolved_parent = parent_path
+        .canonicalize()
+        .map_err(|e| format!("Could not resolve parent directory: {}", e))?;
+
+    if !resolved_parent.starts_with(&current_dir) {
+        return Err("Output path resolves outside the current working directory.".to_string());
+    }
+
+    // Ensure the file itself is not a symlink (if it exists)
+    if let Ok(metadata) = std::fs::symlink_metadata(path) {
+        if metadata.file_type().is_symlink() {
+            return Err("Symlinks are not allowed for security reasons.".to_string());
         }
     }
 
@@ -297,6 +344,9 @@ fn generate(
                     if extension.eq_ignore_ascii_case("svg") {
                         match generator.to_svg() {
                             Ok(svg) => {
+                                if let Err(e) = validate_output_path(&path) {
+                                    return Err(format!("{} {}", "Security Error:".red(), e));
+                                }
                                 if let Err(e) = fs::write(&path, svg) {
                                     return Err(format!("{} {}", "Error saving SVG:".red(), e));
                                 } else {
@@ -488,9 +538,10 @@ mod security_tests {
 
     #[test]
     fn test_validate_output_path() {
+        let _ = std::fs::create_dir_all("test_safe_dir");
         // Safe paths
         assert!(validate_output_path(Path::new("test.png")).is_ok());
-        assert!(validate_output_path(Path::new("dir/test.png")).is_ok());
+        assert!(validate_output_path(Path::new("test_safe_dir/test.png")).is_ok());
         assert!(validate_output_path(Path::new("./test.png")).is_ok());
 
         // Unsafe paths - Absolute
@@ -498,7 +549,9 @@ mod security_tests {
 
         // Unsafe paths - Traversal
         assert!(validate_output_path(Path::new("../test.png")).is_err());
-        assert!(validate_output_path(Path::new("dir/../../test.png")).is_err());
-        assert!(validate_output_path(Path::new("dir/..")).is_err());
+        assert!(validate_output_path(Path::new("test_safe_dir/../../test.png")).is_err());
+        assert!(validate_output_path(Path::new("test_safe_dir/..")).is_err());
+
+        let _ = std::fs::remove_dir("test_safe_dir");
     }
 }

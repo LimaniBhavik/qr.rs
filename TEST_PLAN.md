@@ -2,7 +2,7 @@
 
 ## 1. Test Cases Inventory
 
-### Core Library (`qr-rs`)
+### Core Library (`qr-scan-rs`)
 **Unit Tests (`src/generator/mod.rs`):**
 - `test_generate_text`: Verifies basic text QR generation.
 - `test_generate_url`: Verifies URL QR generation (with/without protocol).
@@ -39,7 +39,7 @@
 ## 2. Execution Schedule
 
 1.  **Phase 1: Core Logic Verification**
-    - **Action:** Run `cargo test -p qr-rs`
+    - **Action:** Run `cargo test -p qr-scan-rs`
     - **Goal:** Confirm the library's core functionality is robust.
 
 2.  **Phase 2: CLI Integration**

@@ -60,7 +60,7 @@ fn is_valid_url(url: &str) -> bool {
     static URL_REGEX: OnceLock<Regex> = OnceLock::new();
     URL_REGEX
         .get_or_init(|| {
-            Regex::new(r"^(https?://)?([\w\d-]+\.)+[\w\d-]+(/.*)?$")
+            Regex::new(r"^(?:https?://)?[\w-]+(?:\.[\w-]+)+(?:/.*)?$")
                 .expect("Invalid URL regex pattern")
         })
         .is_match(url)
@@ -155,24 +155,42 @@ pub fn format_url(url: &str) -> String {
     }
 }
 
+#[allow(dead_code)]
+const fn build_escape_vcard_table() -> [u8; 256] {
+    let mut table = [0; 256];
+    table[b'\\' as usize] = 1;
+    table[b',' as usize] = 1;
+    table[b';' as usize] = 1;
+    table[b':' as usize] = 1;
+    table[b'\n' as usize] = 1;
+    table[b'\r' as usize] = 1;
+    table
+}
+
+#[allow(dead_code)]
+const VCARD_ESCAPE_TABLE: [u8; 256] = build_escape_vcard_table();
+
 fn escape_vcard_value_to(s: &str, out: &mut String) {
-    let mut last_pos = 0;
     let bytes = s.as_bytes();
+    let mut last_pos = 0;
+
     for (i, &b) in bytes.iter().enumerate() {
-        let escaped = match b {
-            b'\\' => "\\\\",
-            b',' => "\\,",
-            b';' => "\\;",
-            b':' => "\\:",
-            b'\n' => "\\n",
-            b'\r' => "\\r",
-            _ => continue,
-        };
-        out.push_str(unsafe { std::str::from_utf8_unchecked(&bytes[last_pos..i]) });
-        out.push_str(escaped);
-        last_pos = i + 1;
+        if VCARD_ESCAPE_TABLE[b as usize] != 0 {
+            out.push_str(&s[last_pos..i]);
+            let escaped = match b {
+                b'\\' => "\\\\",
+                b',' => "\\,",
+                b';' => "\\;",
+                b':' => "\\:",
+                b'\n' => "\\n",
+                b'\r' => "\\r",
+                _ => unreachable!(),
+            };
+            out.push_str(escaped);
+            last_pos = i + 1;
+        }
     }
-    out.push_str(unsafe { std::str::from_utf8_unchecked(&bytes[last_pos..]) });
+    out.push_str(&s[last_pos..]);
 }
 
 pub fn generate_vcard(contact: &ContactData) -> String {
@@ -225,23 +243,40 @@ pub fn generate_vcard(contact: &ContactData) -> String {
     vcard
 }
 
+#[allow(dead_code)]
+const fn build_escape_wifi_table() -> [u8; 256] {
+    let mut table = [0; 256];
+    table[b'\\' as usize] = 1;
+    table[b';' as usize] = 1;
+    table[b',' as usize] = 1;
+    table[b':' as usize] = 1;
+    table[b'\"' as usize] = 1;
+    table
+}
+
+#[allow(dead_code)]
+const WIFI_ESCAPE_TABLE: [u8; 256] = build_escape_wifi_table();
+
 fn escape_wifi_string_to(s: &str, out: &mut String) {
-    let mut last_pos = 0;
     let bytes = s.as_bytes();
+    let mut last_pos = 0;
+
     for (i, &b) in bytes.iter().enumerate() {
-        let escaped = match b {
-            b'\\' => "\\\\",
-            b';' => "\\;",
-            b',' => "\\,",
-            b':' => "\\:",
-            b'\"' => "\\\"",
-            _ => continue,
-        };
-        out.push_str(unsafe { std::str::from_utf8_unchecked(&bytes[last_pos..i]) });
-        out.push_str(escaped);
-        last_pos = i + 1;
+        if WIFI_ESCAPE_TABLE[b as usize] != 0 {
+            out.push_str(&s[last_pos..i]);
+            let escaped = match b {
+                b'\\' => "\\\\",
+                b';' => "\\;",
+                b',' => "\\,",
+                b':' => "\\:",
+                b'\"' => "\\\"",
+                _ => unreachable!(),
+            };
+            out.push_str(escaped);
+            last_pos = i + 1;
+        }
     }
-    out.push_str(unsafe { std::str::from_utf8_unchecked(&bytes[last_pos..]) });
+    out.push_str(&s[last_pos..]);
 }
 
 pub fn generate_wifi(wifi: &WifiData) -> String {
@@ -276,9 +311,20 @@ mod tests {
 
     #[test]
     fn test_format_url() {
+        // Standard cases
         assert_eq!(format_url("example.com"), "https://example.com");
         assert_eq!(format_url("https://example.com"), "https://example.com");
         assert_eq!(format_url("http://example.com"), "http://example.com");
+
+        // Edge cases - Empty and whitespace
+        assert_eq!(format_url(""), "");
+        assert_eq!(format_url("   "), "");
+        assert_eq!(format_url("  example.com  "), "https://example.com");
+
+        // Edge cases - Protocol case-insensitivity and trimming
+        assert_eq!(format_url("HTTP://example.com"), "HTTP://example.com");
+        assert_eq!(format_url("Https://example.com"), "Https://example.com");
+        assert_eq!(format_url("  http://example.com  "), "http://example.com");
     }
 
     #[test]
@@ -331,6 +377,83 @@ mod tests {
         assert!(vcard.contains("N:Doe\\;Smith;John\\, Jr.;;;"));
         assert!(vcard.contains("ORG:ACME\\\\Corp"));
         assert!(vcard.contains("EMAIL:john\\:smith@example.com"));
+    }
+
+    #[test]
+    fn test_vcard_unicode() {
+        let contact = ContactData {
+            first_name: "Jürgen".to_string(),
+            last_name: "Müller, Sr.".to_string(),
+            organization: "🏢 Unicode Corp".to_string(),
+            ..Default::default()
+        };
+        let vcard = generate_vcard(&contact);
+        // Note: Comma in "Müller, Sr." should be escaped to "Müller\, Sr."
+        assert!(vcard.contains("FN:Jürgen Müller\\, Sr."));
+        assert!(vcard.contains("N:Müller\\, Sr.;Jürgen;;;"));
+        assert!(vcard.contains("ORG:🏢 Unicode Corp"));
+    }
+
+    #[test]
+    fn test_vcard_partial_data() {
+        // Only first name
+        let only_first = ContactData {
+            first_name: "John".to_string(),
+            ..Default::default()
+        };
+        let vcard_only_first = generate_vcard(&only_first);
+        // Trailing space after "John" should be removed by pop()
+        assert!(vcard_only_first.contains("FN:John\n"));
+        assert!(vcard_only_first.contains("N:;John;;;\n"));
+
+        // Only last name
+        let only_last = ContactData {
+            last_name: "Doe".to_string(),
+            ..Default::default()
+        };
+        let vcard_only_last = generate_vcard(&only_last);
+        // Note: Currently pushes " " + last_name if first_name is empty
+        assert!(vcard_only_last.contains("FN: Doe\n"));
+        assert!(vcard_only_last.contains("N:Doe;;;;\n"));
+    }
+
+    #[test]
+    fn test_vcard_empty_names() {
+        let empty_names = ContactData {
+            email: "test@example.com".to_string(),
+            ..Default::default()
+        };
+        let vcard = generate_vcard(&empty_names);
+        // VERSION:3.0 contains "N:", so we check for "\nN:" to ensure the N field isn't present
+        assert!(!vcard.contains("\nFN:"));
+        assert!(!vcard.contains("\nN:"));
+        assert!(vcard.contains("EMAIL:test@example.com"));
+    }
+
+    #[test]
+    fn test_is_valid_url() {
+        // Valid URLs
+        assert!(is_valid_url("google.com"));
+        assert!(is_valid_url("www.google.com"));
+        assert!(is_valid_url("https://example.com"));
+        assert!(is_valid_url("http://example.com/path"));
+        assert!(is_valid_url("example.com/path?query=1#fragment"));
+        assert!(is_valid_url("sub.domain.co.uk"));
+        assert!(is_valid_url("a.b"));
+
+        // Invalid URLs
+        assert!(!is_valid_url("localhost")); // Requires at least one dot
+        assert!(!is_valid_url("google."));
+        assert!(!is_valid_url(".google"));
+        assert!(!is_valid_url("http://"));
+        assert!(!is_valid_url("https://.com"));
+
+        // ReDoS protection test
+        let evil_url = format!("{}!", "a.".repeat(100));
+        assert!(!is_valid_url(&evil_url));
+
+        let evil_url_2 = format!("{}!", "a".repeat(100));
+        assert!(!is_valid_url(&evil_url_2));
     }
 
     #[test]
