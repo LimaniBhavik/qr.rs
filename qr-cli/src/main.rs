@@ -325,7 +325,7 @@ fn generate(
                 pb.finish_with_message("Generated!");
 
                 if let Some(path) = output {
-                    if let Err(e) = validate_output_path(&path) {
+                    if let Err(e) = validate_output_path(path) {
                         pb.finish_and_clear();
                         return Err(format!("{} {}", "Security Error:".red(), e));
                     }
@@ -344,10 +344,10 @@ fn generate(
                     if extension.eq_ignore_ascii_case("svg") {
                         match generator.to_svg() {
                             Ok(svg) => {
-                                if let Err(e) = validate_output_path(&path) {
+                                if let Err(e) = validate_output_path(path) {
                                     return Err(format!("{} {}", "Security Error:".red(), e));
                                 }
-                                if let Err(e) = fs::write(&path, svg) {
+                                if let Err(e) = fs::write(path, svg) {
                                     return Err(format!("{} {}", "Error saving SVG:".red(), e));
                                 } else {
                                     println!("{} {}", "Saved to".green(), path.display());
@@ -359,7 +359,7 @@ fn generate(
                         }
                     } else {
                         let logo_img = if let Some(l_path) = logo_path {
-                            match ImageReader::open(&l_path)
+                            match ImageReader::open(l_path)
                                 .map_err(|e| e.to_string())
                                 .and_then(|r| r.decode().map_err(|e| e.to_string()))
                             {
@@ -387,7 +387,7 @@ fn generate(
 
                         match generator.to_png(size, logo_img.as_ref()) {
                             Ok(bytes) => {
-                                if let Err(e) = fs::write(&path, bytes) {
+                                if let Err(e) = fs::write(path, bytes) {
                                     return Err(format!("{} {}", "Error saving PNG:".red(), e));
                                 } else {
                                     println!("{} {}", "Saved to".green(), path.display());
@@ -418,6 +418,23 @@ fn generate(
     }
 }
 
+fn prompt_input(prompt: &str, allow_empty: bool) -> Result<String, String> {
+    Input::<String>::with_theme(&ColorfulTheme::default())
+        .with_prompt(prompt)
+        .allow_empty(allow_empty)
+        .interact_text()
+        .map_err(|e| e.to_string())
+}
+
+fn prompt_output() -> Result<Option<PathBuf>, String> {
+    let output: String = prompt_input("Output file (optional, leave empty for terminal)", true)?;
+    if output.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(PathBuf::from(output)))
+    }
+}
+
 fn run_interactive() -> Result<(), String> {
     let selections = &["URL", "Text", "Contact"];
     let selection = Select::with_theme(&ColorfulTheme::default())
@@ -431,91 +448,25 @@ fn run_interactive() -> Result<(), String> {
 
     match selection {
         0 => {
-            let url: String = Input::with_theme(&ColorfulTheme::default())
-                .with_prompt("Enter URL")
-                .interact_text()
-                .map_err(|e| e.to_string())?;
-            let output: String = Input::with_theme(&ColorfulTheme::default())
-                .with_prompt("Output file (optional, leave empty for terminal)")
-                .allow_empty(true)
-                .interact_text()
-                .map_err(|e| e.to_string())?;
-
-            let path = if output.is_empty() {
-                None
-            } else {
-                Some(PathBuf::from(output))
-            };
+            let url = prompt_input("Enter URL", false)?;
+            let path = prompt_output()?;
             generate(builder.url(url), path.as_deref(), None, None, None, false)?;
         }
         1 => {
-            let text: String = Input::with_theme(&ColorfulTheme::default())
-                .with_prompt("Enter Text")
-                .interact_text()
-                .map_err(|e| e.to_string())?;
-            let output: String = Input::with_theme(&ColorfulTheme::default())
-                .with_prompt("Output file (optional)")
-                .allow_empty(true)
-                .interact_text()
-                .map_err(|e| e.to_string())?;
-            let path = if output.is_empty() {
-                None
-            } else {
-                Some(PathBuf::from(output))
-            };
+            let text = prompt_input("Enter Text", false)?;
+            let path = prompt_output()?;
             generate(builder.text(text), path.as_deref(), None, None, None, false)?;
         }
         2 => {
-            let first_name: String = Input::with_theme(&ColorfulTheme::default())
-                .with_prompt("First Name")
-                .allow_empty(true)
-                .interact_text()
-                .map_err(|e| e.to_string())?;
-            let last_name: String = Input::with_theme(&ColorfulTheme::default())
-                .with_prompt("Last Name")
-                .allow_empty(true)
-                .interact_text()
-                .map_err(|e| e.to_string())?;
-            let email: String = Input::with_theme(&ColorfulTheme::default())
-                .with_prompt("Email")
-                .allow_empty(true)
-                .interact_text()
-                .map_err(|e| e.to_string())?;
-            let phone: String = Input::with_theme(&ColorfulTheme::default())
-                .with_prompt("Phone")
-                .allow_empty(true)
-                .interact_text()
-                .map_err(|e| e.to_string())?;
-            let organization: String = Input::with_theme(&ColorfulTheme::default())
-                .with_prompt("Organization")
-                .allow_empty(true)
-                .interact_text()
-                .map_err(|e| e.to_string())?;
-            let website: String = Input::with_theme(&ColorfulTheme::default())
-                .with_prompt("Website")
-                .allow_empty(true)
-                .interact_text()
-                .map_err(|e| e.to_string())?;
-
             let contact = ContactData {
-                first_name,
-                last_name,
-                email,
-                phone,
-                organization,
-                website,
+                first_name: prompt_input("First Name", true)?,
+                last_name: prompt_input("Last Name", true)?,
+                email: prompt_input("Email", true)?,
+                phone: prompt_input("Phone", true)?,
+                organization: prompt_input("Organization", true)?,
+                website: prompt_input("Website", true)?,
             };
-
-            let output: String = Input::with_theme(&ColorfulTheme::default())
-                .with_prompt("Output file (optional)")
-                .allow_empty(true)
-                .interact_text()
-                .map_err(|e| e.to_string())?;
-            let path = if output.is_empty() {
-                None
-            } else {
-                Some(PathBuf::from(output))
-            };
+            let path = prompt_output()?;
             generate(
                 builder.data(QRData::Contact(contact)),
                 path.as_deref(),
