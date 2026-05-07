@@ -5,10 +5,10 @@ use image::ImageReader;
 use indicatif::{ProgressBar, ProgressStyle};
 use qr_rs::utils::{parse_hex_color, BLACK, WHITE};
 use qr_rs::{ContactData, QRBuilder, QRData};
+use std::fs;
 use std::path::{Component, Path, PathBuf};
 use std::time::Duration;
 
-use std::io::Write;
 #[derive(Parser)]
 #[command(name = "qr-cli")]
 #[command(about = "A CLI utility to encode URLs or text into QR codes in various formats and colors.", long_about = None)]
@@ -302,44 +302,6 @@ fn validate_output_path(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
-fn secure_write(path: &Path, contents: impl AsRef<[u8]>) -> Result<(), String> {
-    use std::fs::OpenOptions;
-
-    // Store existing permissions if the file exists
-    let existing_perms = std::fs::symlink_metadata(path)
-        .ok()
-        .map(|m| m.permissions());
-
-    if path.exists() {
-        if let Ok(metadata) = std::fs::symlink_metadata(path) {
-            if metadata.file_type().is_symlink() {
-                return Err("Symlinks are not allowed for security reasons.".to_string());
-            }
-        }
-        if let Err(e) = std::fs::remove_file(path) {
-            return Err(format!(
-                "Could not remove existing file for overwrite: {}",
-                e
-            ));
-        }
-    }
-
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(path)
-        .map_err(|e| format!("Failed to create file securely: {}", e))?;
-
-    file.write_all(contents.as_ref())
-        .map_err(|e| format!("Failed to write to file: {}", e))?;
-
-    if let Some(perms) = existing_perms {
-        let _ = file.set_permissions(perms);
-    }
-
-    Ok(())
-}
-
 fn generate(
     builder: QRBuilder,
     output: Option<&Path>,
@@ -385,7 +347,7 @@ fn generate(
                                 if let Err(e) = validate_output_path(&path) {
                                     return Err(format!("{} {}", "Security Error:".red(), e));
                                 }
-                                if let Err(e) = secure_write(&path, svg) {
+                                if let Err(e) = fs::write(&path, svg) {
                                     return Err(format!("{} {}", "Error saving SVG:".red(), e));
                                 } else {
                                     println!("{} {}", "Saved to".green(), path.display());
@@ -425,7 +387,7 @@ fn generate(
 
                         match generator.to_png(size, logo_img.as_ref()) {
                             Ok(bytes) => {
-                                if let Err(e) = secure_write(&path, bytes) {
+                                if let Err(e) = fs::write(&path, bytes) {
                                     return Err(format!("{} {}", "Error saving PNG:".red(), e));
                                 } else {
                                     println!("{} {}", "Saved to".green(), path.display());

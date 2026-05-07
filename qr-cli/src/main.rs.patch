@@ -1,0 +1,6 @@
+--- qr-cli/src/main.rs
++++ qr-cli/src/main.rs
+@@ -10,2 +10,3 @@
+ use std::path::{Component, Path, PathBuf};
+ use std::time::Duration;
++use std::io::Write;
