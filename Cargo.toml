@@ -53,3 +53,7 @@ harness = false
 [[bench]]
 name = "test_bench_v2"
 harness = false
+
+[[bench]]
+name = "image_bench"
+harness = false
