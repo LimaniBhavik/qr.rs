@@ -146,9 +146,11 @@ pub fn format_url(url: &str) -> String {
         return String::new();
     }
 
-    if trimmed.to_lowercase().starts_with("http://")
-        || trimmed.to_lowercase().starts_with("https://")
-    {
+    let bytes = trimmed.as_bytes();
+    let is_http = bytes.len() >= 7 && bytes[..7].eq_ignore_ascii_case(b"http://");
+    let is_https = bytes.len() >= 8 && bytes[..8].eq_ignore_ascii_case(b"https://");
+
+    if is_http || is_https {
         trimmed.to_string()
     } else {
         format!("https://{}", trimmed)

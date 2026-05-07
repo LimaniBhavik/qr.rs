@@ -57,3 +57,7 @@ harness = false
 [[bench]]
 name = "image_bench"
 harness = false
+
+[[bench]]
+name = "format_url_bench"
+harness = false
