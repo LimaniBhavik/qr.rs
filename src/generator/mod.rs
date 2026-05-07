@@ -288,6 +288,18 @@ mod tests {
     }
 
     #[test]
+    fn test_builder_default_values() {
+        let builder = QRBuilder::new();
+        assert!(builder.data.is_none());
+
+        // Use matching variant to compare EcLevel instead of direct PartialEq if needed,
+        // but EcLevel derives PartialEq.
+        assert_eq!(builder.error_correction, DEFAULT_ERROR_CORRECTION);
+        assert_eq!(builder.foreground_color, DEFAULT_FOREGROUND_COLOR);
+        assert_eq!(builder.background_color, DEFAULT_BACKGROUND_COLOR);
+    }
+
+    #[test]
     fn test_builder_missing_data_error() {
         let builder = QRBuilder::new();
         let result = builder.build();
@@ -297,6 +309,95 @@ mod tests {
             Err(QRError::InvalidData(msg)) => assert_eq!(msg, "No data provided"),
             _ => panic!("Expected QRError::InvalidData"),
         }
+    }
+
+    #[test]
+    fn test_builder_url() {
+        let generator = QRBuilder::new()
+            .url("https://example.com")
+            .build()
+            .expect("Should build successfully");
+
+        match generator.data {
+            QRData::URL(url) => assert_eq!(url, "https://example.com"),
+            _ => panic!("Expected QRData::URL"),
+        }
+    }
+
+    #[test]
+    fn test_builder_text() {
+        let generator = QRBuilder::new()
+            .text("Hello, World!")
+            .build()
+            .expect("Should build successfully");
+
+        match generator.data {
+            QRData::Text(text) => assert_eq!(text, "Hello, World!"),
+            _ => panic!("Expected QRData::Text"),
+        }
+    }
+
+    #[test]
+    fn test_builder_wifi() {
+        let wifi_data = crate::formats::WifiData {
+            ssid: "MyNetwork".to_string(),
+            password: "password123".to_string(),
+            ..Default::default()
+        };
+        let generator = QRBuilder::new()
+            .wifi(wifi_data.clone())
+            .build()
+            .expect("Should build successfully");
+
+        match generator.data {
+            QRData::Wifi(wifi) => {
+                assert_eq!(wifi.ssid, wifi_data.ssid);
+                assert_eq!(wifi.password, wifi_data.password);
+            }
+            _ => panic!("Expected QRData::Wifi"),
+        }
+    }
+
+    #[test]
+    fn test_builder_location() {
+        let loc_data = crate::formats::LocationData {
+            latitude: 40.7128,
+            longitude: -74.0060,
+        };
+        let generator = QRBuilder::new()
+            .location(loc_data.clone())
+            .build()
+            .expect("Should build successfully");
+
+        match generator.data {
+            QRData::Location(loc) => {
+                assert_eq!(loc.latitude, 40.7128);
+                assert_eq!(loc.longitude, -74.0060);
+            }
+            _ => panic!("Expected QRData::Location"),
+        }
+    }
+
+    #[test]
+    fn test_builder_chaining_and_colors() {
+        let fg = [255, 0, 0, 255]; // Red
+        let bg = [0, 255, 0, 255]; // Green
+
+        let generator = QRBuilder::new()
+            .text("Chaining test")
+            .error_correction(qrcode::EcLevel::L)
+            .colors(fg, bg)
+            .build()
+            .expect("Should build successfully");
+
+        match generator.data {
+            QRData::Text(text) => assert_eq!(text, "Chaining test"),
+            _ => panic!("Expected QRData::Text"),
+        }
+
+        assert_eq!(generator.error_correction, qrcode::EcLevel::L);
+        assert_eq!(generator.foreground_color.0, fg);
+        assert_eq!(generator.background_color.0, bg);
     }
 
     #[test]
