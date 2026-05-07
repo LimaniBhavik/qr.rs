@@ -171,24 +171,29 @@ const fn build_escape_vcard_table() -> [u8; 256] {
 const VCARD_ESCAPE_TABLE: [u8; 256] = build_escape_vcard_table();
 
 fn escape_vcard_value_to(s: &str, out: &mut String) {
-    let bytes = s.as_bytes();
     let mut last_pos = 0;
+    let bytes = s.as_bytes();
+    let mut search_slice = bytes;
 
-    for (i, &b) in bytes.iter().enumerate() {
-        if VCARD_ESCAPE_TABLE[b as usize] != 0 {
-            out.push_str(&s[last_pos..i]);
-            let escaped = match b {
-                b'\\' => "\\\\",
-                b',' => "\\,",
-                b';' => "\\;",
-                b':' => "\\:",
-                b'\n' => "\\n",
-                b'\r' => "\\r",
-                _ => unreachable!(),
-            };
-            out.push_str(escaped);
-            last_pos = i + 1;
-        }
+    while let Some(idx) = search_slice
+        .iter()
+        .position(|&b| VCARD_ESCAPE_TABLE[b as usize] != 0)
+    {
+        let i = last_pos + idx;
+        out.push_str(&s[last_pos..i]);
+        let b = bytes[i];
+        let escaped = match b {
+            b'\\' => "\\\\",
+            b',' => "\\,",
+            b';' => "\\;",
+            b':' => "\\:",
+            b'\n' => "\\n",
+            b'\r' => "\\r",
+            _ => unreachable!(),
+        };
+        out.push_str(escaped);
+        last_pos = i + 1;
+        search_slice = &bytes[last_pos..];
     }
     out.push_str(&s[last_pos..]);
 }
@@ -256,23 +261,28 @@ const fn build_escape_wifi_table() -> [u8; 256] {
 const WIFI_ESCAPE_TABLE: [u8; 256] = build_escape_wifi_table();
 
 fn escape_wifi_string_to(s: &str, out: &mut String) {
-    let bytes = s.as_bytes();
     let mut last_pos = 0;
+    let bytes = s.as_bytes();
+    let mut search_slice = bytes;
 
-    for (i, &b) in bytes.iter().enumerate() {
-        if WIFI_ESCAPE_TABLE[b as usize] != 0 {
-            out.push_str(&s[last_pos..i]);
-            let escaped = match b {
-                b'\\' => "\\\\",
-                b';' => "\\;",
-                b',' => "\\,",
-                b':' => "\\:",
-                b'\"' => "\\\"",
-                _ => unreachable!(),
-            };
-            out.push_str(escaped);
-            last_pos = i + 1;
-        }
+    while let Some(idx) = search_slice
+        .iter()
+        .position(|&b| WIFI_ESCAPE_TABLE[b as usize] != 0)
+    {
+        let i = last_pos + idx;
+        out.push_str(&s[last_pos..i]);
+        let b = bytes[i];
+        let escaped = match b {
+            b'\\' => "\\\\",
+            b';' => "\\;",
+            b',' => "\\,",
+            b':' => "\\:",
+            b'\"' => "\\\"",
+            _ => unreachable!(),
+        };
+        out.push_str(escaped);
+        last_pos = i + 1;
+        search_slice = &bytes[last_pos..];
     }
     out.push_str(&s[last_pos..]);
 }
