@@ -1,0 +1,35 @@
+<<<<<<< SEARCH
+fn generate(
+    builder: QRBuilder,
+=======
+fn secure_write(path: &Path, contents: impl AsRef<[u8]>) -> Result<(), String> {
+    use std::fs::OpenOptions;
+
+    // Check if the path exists. If it does, we can delete it since the `force` flag
+    // check has already happened earlier. We need to be careful to delete it instead
+    // of just opening with truncation so we avoid following a symlink that might have
+    // been created between the check and here.
+    if path.exists() {
+        if let Ok(metadata) = std::fs::symlink_metadata(path) {
+            if metadata.file_type().is_symlink() {
+                return Err("Symlinks are not allowed for security reasons.".to_string());
+            }
+        }
+        if let Err(e) = std::fs::remove_file(path) {
+            return Err(format!("Could not remove existing file for overwrite: {}", e));
+        }
+    }
+
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)
+        .map_err(|e| format!("Failed to create file securely: {}", e))?;
+
+    file.write_all(contents.as_ref())
+        .map_err(|e| format!("Failed to write to file: {}", e))
+}
+
+fn generate(
+    builder: QRBuilder,
+>>>>>>> REPLACE
