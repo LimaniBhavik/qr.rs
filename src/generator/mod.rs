@@ -1,12 +1,12 @@
 use crate::error::QRError;
 use crate::formats::{format_url, generate_geo_uri, generate_vcard, generate_wifi, QRData};
 use crate::utils::{BLACK, WHITE};
-use std::borrow::Cow;
 use image::{DynamicImage, ImageFormat, Luma, Rgba, RgbaImage};
 use imageproc::drawing::draw_filled_rect_mut;
 use imageproc::rect::Rect;
 use log::{debug, info};
 use qrcode::QrCode;
+use std::borrow::Cow;
 use std::io::Cursor;
 
 const DEFAULT_ERROR_CORRECTION: qrcode::EcLevel = qrcode::EcLevel::H;
@@ -146,8 +146,9 @@ impl QRGenerator {
             buffer.extend_from_slice(&color);
         }
 
-        let mut image = RgbaImage::from_raw(width, height, buffer)
-            .ok_or_else(|| QRError::GenerationError("Failed to create RgbaImage from raw buffer".to_string()))?;
+        let mut image = RgbaImage::from_raw(width, height, buffer).ok_or_else(|| {
+            QRError::GenerationError("Failed to create RgbaImage from raw buffer".to_string())
+        })?;
 
         if let Some(logo_img) = logo {
             info!("Adding logo to QR code");
@@ -185,8 +186,14 @@ impl QRGenerator {
     pub fn to_svg(&self) -> Result<String, QRError> {
         let qr = self.generate()?;
 
-        let fg_hex = format!("#{:02X}{:02X}{:02X}", self.foreground_color.0[0], self.foreground_color.0[1], self.foreground_color.0[2]);
-        let bg_hex = format!("#{:02X}{:02X}{:02X}", self.background_color.0[0], self.background_color.0[1], self.background_color.0[2]);
+        let fg_hex = format!(
+            "#{:02X}{:02X}{:02X}",
+            self.foreground_color.0[0], self.foreground_color.0[1], self.foreground_color.0[2]
+        );
+        let bg_hex = format!(
+            "#{:02X}{:02X}{:02X}",
+            self.background_color.0[0], self.background_color.0[1], self.background_color.0[2]
+        );
 
         let mut binding = qr.render::<qrcode::render::svg::Color>();
         let builder = binding
