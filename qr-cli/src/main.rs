@@ -133,7 +133,7 @@ fn configure_builder(
 
     if let Some(fg) = foreground {
         if let Some(color) = parse_hex_color(&fg) {
-            let bg = if let Some(bg_str) = background.clone() {
+            let bg = if let Some(bg_str) = background {
                 parse_hex_color(&bg_str).unwrap_or(WHITE)
             } else {
                 WHITE
