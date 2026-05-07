@@ -314,7 +314,7 @@ fn generate(
     pb.set_style(
         ProgressStyle::default_spinner()
             .template("{spinner:.green} {msg}")
-            .expect("Failed to initialize static progress bar template"),
+            .unwrap_or_else(|_| ProgressStyle::default_spinner()),
     );
     pb.set_message("Generating QR Code...");
     pb.enable_steady_tick(Duration::from_millis(100));
