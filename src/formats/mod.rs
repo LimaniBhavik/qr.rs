@@ -416,6 +416,61 @@ mod tests {
     }
 
     #[test]
+    fn test_vcard_optional_fields() {
+        // Test with only organization
+        let contact1 = ContactData {
+            first_name: "John".to_string(),
+            last_name: "Doe".to_string(),
+            organization: "ACME Corp".to_string(),
+            ..Default::default()
+        };
+        let vcard1 = generate_vcard(&contact1);
+        assert!(vcard1.contains("ORG:ACME Corp\n"));
+        assert!(!vcard1.contains("TEL:"));
+        assert!(!vcard1.contains("EMAIL:"));
+        assert!(!vcard1.contains("URL:"));
+
+        // Test with only phone and email
+        let contact2 = ContactData {
+            first_name: "Jane".to_string(),
+            last_name: "Smith".to_string(),
+            phone: "+1234567890".to_string(),
+            email: "jane@example.com".to_string(),
+            ..Default::default()
+        };
+        let vcard2 = generate_vcard(&contact2);
+        assert!(!vcard2.contains("ORG:"));
+        assert!(vcard2.contains("TEL:+1234567890\n"));
+        assert!(vcard2.contains("EMAIL:jane@example.com\n"));
+        assert!(!vcard2.contains("URL:"));
+
+        // Test with website, which requires URL formatting
+        let contact3 = ContactData {
+            first_name: "Alice".to_string(),
+            last_name: "Wonder".to_string(),
+            website: "alice.com".to_string(),
+            ..Default::default()
+        };
+        let vcard3 = generate_vcard(&contact3);
+        assert!(!vcard3.contains("ORG:"));
+        assert!(!vcard3.contains("TEL:"));
+        assert!(!vcard3.contains("EMAIL:"));
+        assert!(vcard3.contains("URL:https\\://alice.com\n"));
+
+        // Test with everything absent except names
+        let contact4 = ContactData {
+            first_name: "Bob".to_string(),
+            last_name: "Builder".to_string(),
+            ..Default::default()
+        };
+        let vcard4 = generate_vcard(&contact4);
+        assert!(!vcard4.contains("ORG:"));
+        assert!(!vcard4.contains("TEL:"));
+        assert!(!vcard4.contains("EMAIL:"));
+        assert!(!vcard4.contains("URL:"));
+    }
+
+    #[test]
     fn test_vcard_empty_names() {
         let empty_names = ContactData {
             email: "test@example.com".to_string(),
