@@ -187,19 +187,19 @@ impl QRGenerator {
         let qr = self.generate()?;
 
         let fg_hex = format!(
-            "#{:02X}{:02X}{:02X}",
-            self.foreground_color.0[0], self.foreground_color.0[1], self.foreground_color.0[2]
+            "#{:02X}{:02X}{:02X}{:02X}",
+            self.foreground_color.0[0], self.foreground_color.0[1], self.foreground_color.0[2], self.foreground_color.0[3]
         );
         let bg_hex = format!(
-            "#{:02X}{:02X}{:02X}",
-            self.background_color.0[0], self.background_color.0[1], self.background_color.0[2]
+            "#{:02X}{:02X}{:02X}{:02X}",
+            self.background_color.0[0], self.background_color.0[1], self.background_color.0[2], self.background_color.0[3]
         );
 
         let mut binding = qr.render::<qrcode::render::svg::Color>();
         let builder = binding
             .min_dimensions(200, 200)
-            .dark_color(qrcode::render::svg::Color(&fg_hex))
-            .light_color(qrcode::render::svg::Color(&bg_hex));
+            .dark_color(qrcode::render::svg::Color(fg_hex.as_str()))
+            .light_color(qrcode::render::svg::Color(bg_hex.as_str()));
 
         Ok(builder.build())
     }
@@ -483,7 +483,7 @@ mod tests {
 
         assert!(svg.contains("<svg"));
         assert!(svg.contains("viewBox"));
-        assert!(svg.contains("#FF0000")); // Check for foreground color
-        assert!(svg.contains("#00FF00")); // Check for background color
+        assert!(svg.contains("#FF0000FF")); // Check for foreground color
+        assert!(svg.contains("#00FF00FF")); // Check for background color
     }
 }
