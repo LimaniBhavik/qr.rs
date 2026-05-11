@@ -171,24 +171,29 @@ const fn build_escape_vcard_table() -> [u8; 256] {
 const VCARD_ESCAPE_TABLE: [u8; 256] = build_escape_vcard_table();
 
 fn escape_vcard_value_to(s: &str, out: &mut String) {
-    let bytes = s.as_bytes();
     let mut last_pos = 0;
+    let bytes = s.as_bytes();
+    let mut search_slice = bytes;
 
-    for (i, &b) in bytes.iter().enumerate() {
-        if VCARD_ESCAPE_TABLE[b as usize] != 0 {
-            out.push_str(&s[last_pos..i]);
-            let escaped = match b {
-                b'\\' => "\\\\",
-                b',' => "\\,",
-                b';' => "\\;",
-                b':' => "\\:",
-                b'\n' => "\\n",
-                b'\r' => "\\r",
-                _ => unreachable!(),
-            };
-            out.push_str(escaped);
-            last_pos = i + 1;
-        }
+    while let Some(idx) = search_slice
+        .iter()
+        .position(|&b| VCARD_ESCAPE_TABLE[b as usize] != 0)
+    {
+        let i = last_pos + idx;
+        out.push_str(&s[last_pos..i]);
+        let b = bytes[i];
+        let escaped = match b {
+            b'\\' => "\\\\",
+            b',' => "\\,",
+            b';' => "\\;",
+            b':' => "\\:",
+            b'\n' => "\\n",
+            b'\r' => "\\r",
+            _ => unreachable!(),
+        };
+        out.push_str(escaped);
+        last_pos = i + 1;
+        search_slice = &bytes[last_pos..];
     }
     out.push_str(&s[last_pos..]);
 }
@@ -256,23 +261,28 @@ const fn build_escape_wifi_table() -> [u8; 256] {
 const WIFI_ESCAPE_TABLE: [u8; 256] = build_escape_wifi_table();
 
 fn escape_wifi_string_to(s: &str, out: &mut String) {
-    let bytes = s.as_bytes();
     let mut last_pos = 0;
+    let bytes = s.as_bytes();
+    let mut search_slice = bytes;
 
-    for (i, &b) in bytes.iter().enumerate() {
-        if WIFI_ESCAPE_TABLE[b as usize] != 0 {
-            out.push_str(&s[last_pos..i]);
-            let escaped = match b {
-                b'\\' => "\\\\",
-                b';' => "\\;",
-                b',' => "\\,",
-                b':' => "\\:",
-                b'\"' => "\\\"",
-                _ => unreachable!(),
-            };
-            out.push_str(escaped);
-            last_pos = i + 1;
-        }
+    while let Some(idx) = search_slice
+        .iter()
+        .position(|&b| WIFI_ESCAPE_TABLE[b as usize] != 0)
+    {
+        let i = last_pos + idx;
+        out.push_str(&s[last_pos..i]);
+        let b = bytes[i];
+        let escaped = match b {
+            b'\\' => "\\\\",
+            b';' => "\\;",
+            b',' => "\\,",
+            b':' => "\\:",
+            b'\"' => "\\\"",
+            _ => unreachable!(),
+        };
+        out.push_str(escaped);
+        last_pos = i + 1;
+        search_slice = &bytes[last_pos..];
     }
     out.push_str(&s[last_pos..]);
 }
@@ -413,6 +423,61 @@ mod tests {
         // Note: Currently pushes " " + last_name if first_name is empty
         assert!(vcard_only_last.contains("FN: Doe\n"));
         assert!(vcard_only_last.contains("N:Doe;;;;\n"));
+    }
+
+    #[test]
+    fn test_vcard_optional_fields() {
+        // Test with only organization
+        let contact1 = ContactData {
+            first_name: "John".to_string(),
+            last_name: "Doe".to_string(),
+            organization: "ACME Corp".to_string(),
+            ..Default::default()
+        };
+        let vcard1 = generate_vcard(&contact1);
+        assert!(vcard1.contains("ORG:ACME Corp\n"));
+        assert!(!vcard1.contains("TEL:"));
+        assert!(!vcard1.contains("EMAIL:"));
+        assert!(!vcard1.contains("URL:"));
+
+        // Test with only phone and email
+        let contact2 = ContactData {
+            first_name: "Jane".to_string(),
+            last_name: "Smith".to_string(),
+            phone: "+1234567890".to_string(),
+            email: "jane@example.com".to_string(),
+            ..Default::default()
+        };
+        let vcard2 = generate_vcard(&contact2);
+        assert!(!vcard2.contains("ORG:"));
+        assert!(vcard2.contains("TEL:+1234567890\n"));
+        assert!(vcard2.contains("EMAIL:jane@example.com\n"));
+        assert!(!vcard2.contains("URL:"));
+
+        // Test with website, which requires URL formatting
+        let contact3 = ContactData {
+            first_name: "Alice".to_string(),
+            last_name: "Wonder".to_string(),
+            website: "alice.com".to_string(),
+            ..Default::default()
+        };
+        let vcard3 = generate_vcard(&contact3);
+        assert!(!vcard3.contains("ORG:"));
+        assert!(!vcard3.contains("TEL:"));
+        assert!(!vcard3.contains("EMAIL:"));
+        assert!(vcard3.contains("URL:https\\://alice.com\n"));
+
+        // Test with everything absent except names
+        let contact4 = ContactData {
+            first_name: "Bob".to_string(),
+            last_name: "Builder".to_string(),
+            ..Default::default()
+        };
+        let vcard4 = generate_vcard(&contact4);
+        assert!(!vcard4.contains("ORG:"));
+        assert!(!vcard4.contains("TEL:"));
+        assert!(!vcard4.contains("EMAIL:"));
+        assert!(!vcard4.contains("URL:"));
     }
 
     #[test]
