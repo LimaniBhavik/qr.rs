@@ -35,16 +35,22 @@ pub struct LocationData {
     pub longitude: f64,
 }
 
-fn is_valid_email(email: &str) -> bool {
+fn get_or_init_regex(
+    lock: &'static OnceLock<Result<Regex, String>>,
+    pattern: &str,
+) -> Result<&'static Regex, QRError> {
+    lock.get_or_init(|| Regex::new(pattern).map_err(|e| e.to_string()))
+        .as_ref()
+        .map_err(|e| QRError::GenerationError(format!("Invalid regex pattern: {}", e)))
+}
+
+fn is_valid_email(email: &str) -> Result<bool, QRError> {
     if email.len() > 254 {
-        return false;
+        return Ok(false);
     }
-    static EMAIL_REGEX: OnceLock<Regex> = OnceLock::new();
-    EMAIL_REGEX
-        .get_or_init(|| {
-            Regex::new(r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$").expect("Invalid email regex pattern")
-        })
-        .is_match(email)
+    static EMAIL_REGEX: OnceLock<Result<Regex, String>> = OnceLock::new();
+    let regex = get_or_init_regex(&EMAIL_REGEX, r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$")?;
+    Ok(regex.is_match(email))
 }
 
 fn is_valid_phone(phone: &str) -> bool {
@@ -60,14 +66,10 @@ fn is_valid_phone(phone: &str) -> bool {
         .is_match(phone)
 }
 
-fn is_valid_url(url: &str) -> bool {
-    static URL_REGEX: OnceLock<Regex> = OnceLock::new();
-    URL_REGEX
-        .get_or_init(|| {
-            Regex::new(r"^(?:https?://)?[\w-]+(?:\.[\w-]+)+(?:/.*)?$")
-                .expect("Invalid URL regex pattern")
-        })
-        .is_match(url)
+fn is_valid_url(url: &str) -> Result<bool, QRError> {
+    static URL_REGEX: OnceLock<Result<Regex, String>> = OnceLock::new();
+    let regex = get_or_init_regex(&URL_REGEX, r"^(?:https?://)?[\w-]+(?:\.[\w-]+)+(?:/.*)?$")?;
+    Ok(regex.is_match(url))
 }
 
 impl ContactData {
@@ -85,21 +87,21 @@ impl ContactData {
             });
         }
 
-        if !self.email.is_empty() && !is_valid_email(&self.email) {
+        if !self.email.is_empty() && !is_valid_email(&self.email)? {
             return Err(QRError::VCardError {
                 field: "email".to_string(),
                 reason: "Invalid email format".to_string(),
             });
         }
 
-        if !self.phone.is_empty() && !is_valid_phone(&self.phone) {
+        if !self.phone.is_empty() && !is_valid_phone(&self.phone)? {
             return Err(QRError::VCardError {
                 field: "phone".to_string(),
                 reason: "Invalid phone number format".to_string(),
             });
         }
 
-        if !self.website.is_empty() && !is_valid_url(&self.website) {
+        if !self.website.is_empty() && !is_valid_url(&self.website)? {
             return Err(QRError::VCardError {
                 field: "website".to_string(),
                 reason: "Invalid website URL format".to_string(),
@@ -529,134 +531,134 @@ mod tests {
     #[test]
     fn test_is_valid_url() {
         // Valid URLs
-        assert!(is_valid_url("google.com"));
-        assert!(is_valid_url("www.google.com"));
-        assert!(is_valid_url("https://example.com"));
-        assert!(is_valid_url("http://example.com/path"));
-        assert!(is_valid_url("example.com/path?query=1#fragment"));
-        assert!(is_valid_url("sub.domain.co.uk"));
-        assert!(is_valid_url("a.b"));
+        assert!(is_valid_url("google.com").expect("Regex should compile"));
+        assert!(is_valid_url("www.google.com").expect("Regex should compile"));
+        assert!(is_valid_url("https://example.com").expect("Regex should compile"));
+        assert!(is_valid_url("http://example.com/path").expect("Regex should compile"));
+        assert!(is_valid_url("example.com/path?query=1#fragment").expect("Regex should compile"));
+        assert!(is_valid_url("sub.domain.co.uk").expect("Regex should compile"));
+        assert!(is_valid_url("a.b").expect("Regex should compile"));
 
         // Invalid URLs
-        assert!(!is_valid_url("localhost")); // Requires at least one dot
-        assert!(!is_valid_url("google."));
-        assert!(!is_valid_url(".google"));
-        assert!(!is_valid_url("http://"));
-        assert!(!is_valid_url("https://.com"));
+        assert!(!is_valid_url("localhost").expect("Regex should compile")); // Requires at least one dot
+        assert!(!is_valid_url("google.").expect("Regex should compile"));
+        assert!(!is_valid_url(".google").expect("Regex should compile"));
+        assert!(!is_valid_url("http://").expect("Regex should compile"));
+        assert!(!is_valid_url("https://.com").expect("Regex should compile"));
 
         // ReDoS protection test
         let evil_url = format!("{}!", "a.".repeat(100));
-        assert!(!is_valid_url(&evil_url));
+        assert!(!is_valid_url(&evil_url).expect("Regex should compile"));
 
         let evil_url_2 = format!("{}!", "a".repeat(100));
-        assert!(!is_valid_url(&evil_url_2));
+        assert!(!is_valid_url(&evil_url_2).expect("Regex should compile"));
     }
 
     #[test]
     fn test_is_valid_email() {
         // Valid emails - Standard
         // Standard valid emails
-        assert!(is_valid_email("user@example.com"));
-        assert!(is_valid_email("user.name@example.com"));
-        assert!(is_valid_email("user.name@sub.domain.co.uk")); // Added from issue description
-        assert!(is_valid_email("user+tag@example.com"));
-        assert!(is_valid_email("user-name@example.com"));
-        assert!(is_valid_email("user_name@example.com"));
-        assert!(is_valid_email("user@localhost"));
-        assert!(is_valid_email("user@123.123.123.123"));
-        assert!(is_valid_email("user@sub.example.com"));
-        assert!(is_valid_email("user@example.co.uk"));
-        assert!(is_valid_email("1234567890@example.com"));
-        assert!(is_valid_email("user@example-one.com"));
-        assert!(is_valid_email("_______@example.com"));
-        assert!(is_valid_email("u@example.com"));
-        assert!(is_valid_email("user.name.with.dots@example.com"));
-        assert!(is_valid_email("user!name@example.com"));
-        assert!(is_valid_email("user#name@example.com"));
+        assert!(is_valid_email("user@example.com").expect("Regex should compile"));
+        assert!(is_valid_email("user.name@example.com").expect("Regex should compile"));
+        assert!(is_valid_email("user.name@sub.domain.co.uk").expect("Regex should compile")); // Added from issue description
+        assert!(is_valid_email("user+tag@example.com").expect("Regex should compile"));
+        assert!(is_valid_email("user-name@example.com").expect("Regex should compile"));
+        assert!(is_valid_email("user_name@example.com").expect("Regex should compile"));
+        assert!(is_valid_email("user@localhost").expect("Regex should compile"));
+        assert!(is_valid_email("user@123.123.123.123").expect("Regex should compile"));
+        assert!(is_valid_email("user@sub.example.com").expect("Regex should compile"));
+        assert!(is_valid_email("user@example.co.uk").expect("Regex should compile"));
+        assert!(is_valid_email("1234567890@example.com").expect("Regex should compile"));
+        assert!(is_valid_email("user@example-one.com").expect("Regex should compile"));
+        assert!(is_valid_email("_______@example.com").expect("Regex should compile"));
+        assert!(is_valid_email("u@example.com").expect("Regex should compile"));
+        assert!(is_valid_email("user.name.with.dots@example.com").expect("Regex should compile"));
+        assert!(is_valid_email("user!name@example.com").expect("Regex should compile"));
+        assert!(is_valid_email("user#name@example.com").expect("Regex should compile"));
 
         // Extended valid edge cases
-        assert!(is_valid_email("valid-local-part@domain.com"));
-        assert!(is_valid_email("valid_local_part@domain.com"));
-        assert!(is_valid_email("12345678901234567890@example.com"));
-        assert!(is_valid_email("user@a.com")); // short domain
-        assert!(is_valid_email("user@domain.solutions")); // long TLD
-        assert!(is_valid_email("user@domain-with-dash.com")); // domain with dash
-        assert!(is_valid_email("a@b.c")); // extremely short
+        assert!(is_valid_email("valid-local-part@domain.com").expect("Regex should compile"));
+        assert!(is_valid_email("valid_local_part@domain.com").expect("Regex should compile"));
+        assert!(is_valid_email("12345678901234567890@example.com").expect("Regex should compile"));
+        assert!(is_valid_email("user@a.com").expect("Regex should compile")); // short domain
+        assert!(is_valid_email("user@domain.solutions").expect("Regex should compile")); // long TLD
+        assert!(is_valid_email("user@domain-with-dash.com").expect("Regex should compile")); // domain with dash
+        assert!(is_valid_email("a@b.c").expect("Regex should compile")); // extremely short
 
         // Valid emails - Edge cases (Complex characters in local part)
-        assert!(is_valid_email("!#$%&'*+-/=?^_`{|}~@example.com"));
-        assert!(is_valid_email("user%name@example.com"));
+        assert!(is_valid_email("!#$%&'*+-/=?^_`{|}~@example.com").expect("Regex should compile"));
+        assert!(is_valid_email("user%name@example.com").expect("Regex should compile"));
 
         // Valid emails - Edge cases (Domain segments length)
         // 63 character domain segment
         let long_domain = format!("user@{}.com", "a".repeat(63));
-        assert!(is_valid_email(&long_domain));
+        assert!(is_valid_email(&long_domain).expect("Regex should compile"));
 
         // Complex multi-subdomains
-        assert!(is_valid_email("user.name.with.dots@sub.domain.co.uk"));
-        assert!(is_valid_email("user@sub.sub.sub.domain.com"));
+        assert!(is_valid_email("user.name.with.dots@sub.domain.co.uk").expect("Regex should compile"));
+        assert!(is_valid_email("user@sub.sub.sub.domain.com").expect("Regex should compile"));
 
         // Invalid emails - Missing parts
-        assert!(!is_valid_email("plainaddress"));
-        assert!(!is_valid_email("@example.com"));
-        assert!(!is_valid_email("email.example.com"));
-        assert!(!is_valid_email("email@"));
-        assert!(!is_valid_email("user@.com"));
+        assert!(!is_valid_email("plainaddress").expect("Regex should compile"));
+        assert!(!is_valid_email("@example.com").expect("Regex should compile"));
+        assert!(!is_valid_email("email.example.com").expect("Regex should compile"));
+        assert!(!is_valid_email("email@").expect("Regex should compile"));
+        assert!(!is_valid_email("user@.com").expect("Regex should compile"));
 
         // Invalid emails - Structure/Syntax issues
-        assert!(!is_valid_email("email@example@example.com"));
-        assert!(!is_valid_email("Joe Smith <email@example.com>"));
-        assert!(!is_valid_email("email@example.com (Joe Smith)"));
-        assert!(!is_valid_email("あいうえお@example.com")); // Non-ASCII
+        assert!(!is_valid_email("email@example@example.com").expect("Regex should compile"));
+        assert!(!is_valid_email("Joe Smith <email@example.com>").expect("Regex should compile"));
+        assert!(!is_valid_email("email@example.com (Joe Smith)").expect("Regex should compile"));
+        assert!(!is_valid_email("あいうえお@example.com").expect("Regex should compile")); // Non-ASCII
 
         // Invalid emails - Consecutive or leading/trailing dots
-        assert!(!is_valid_email(".email@example.com"));
-        assert!(!is_valid_email("email.@example.com"));
-        assert!(!is_valid_email("email..email@example.com"));
-        assert!(!is_valid_email("email@example..com"));
-        assert!(!is_valid_email("Abc..123@example.com"));
+        assert!(!is_valid_email(".email@example.com").expect("Regex should compile"));
+        assert!(!is_valid_email("email.@example.com").expect("Regex should compile"));
+        assert!(!is_valid_email("email..email@example.com").expect("Regex should compile"));
+        assert!(!is_valid_email("email@example..com").expect("Regex should compile"));
+        assert!(!is_valid_email("Abc..123@example.com").expect("Regex should compile"));
 
         // Invalid emails - Hyphen position in domain
-        assert!(!is_valid_email("email@-example.com"));
-        assert!(!is_valid_email("email@example-.com"));
-        assert!(!is_valid_email("email@example.-com"));
-        assert!(!is_valid_email("email@example.com-"));
+        assert!(!is_valid_email("email@-example.com").expect("Regex should compile"));
+        assert!(!is_valid_email("email@example-.com").expect("Regex should compile"));
+        assert!(!is_valid_email("email@example.-com").expect("Regex should compile"));
+        assert!(!is_valid_email("email@example.com-").expect("Regex should compile"));
 
         // Invalid emails - Domain segments length
         // 64 character domain segment (exceeds the maximum 63 permitted by the regex length limit {0,61})
         // "a" + 62 times "a" + "a" = 64 characters. Limit is "a" + {0,61} + "a" = 63 max characters.
         let too_long_domain = format!("user@{}.com", "a".repeat(64));
-        assert!(!is_valid_email(&too_long_domain));
+        assert!(!is_valid_email(&too_long_domain).expect("Regex should compile"));
 
         // Invalid emails - Spaces
-        assert!(!is_valid_email(" user@example.com"));
-        assert!(!is_valid_email("user @example.com"));
-        assert!(!is_valid_email("user@ example.com"));
-        assert!(!is_valid_email("user@example.com "));
-        assert!(!is_valid_email("user name@example.com"));
-        assert!(!is_valid_email("user@exam ple.com"));
+        assert!(!is_valid_email(" user@example.com").expect("Regex should compile"));
+        assert!(!is_valid_email("user @example.com").expect("Regex should compile"));
+        assert!(!is_valid_email("user@ example.com").expect("Regex should compile"));
+        assert!(!is_valid_email("user@example.com ").expect("Regex should compile"));
+        assert!(!is_valid_email("user name@example.com").expect("Regex should compile"));
+        assert!(!is_valid_email("user@exam ple.com").expect("Regex should compile"));
 
         // Invalid emails - Quotes (current regex does not permit quotes)
-        assert!(!is_valid_email("\"user\"@example.com"));
-        assert!(!is_valid_email("\"user.name\"@example.com"));
-        assert!(!is_valid_email("\" \"@example.com"));
-        assert!(!is_valid_email("user..name@example.com"));
-        assert!(!is_valid_email("user@.example.com"));
-        assert!(!is_valid_email("user@example.com."));
-        assert!(!is_valid_email("user@example_domain.com"));
-        assert!(!is_valid_email("user@example com")); // Space in domain
-        assert!(!is_valid_email("user@example.")); // Trailing dot in domain
+        assert!(!is_valid_email("\"user\"@example.com").expect("Regex should compile"));
+        assert!(!is_valid_email("\"user.name\"@example.com").expect("Regex should compile"));
+        assert!(!is_valid_email("\" \"@example.com").expect("Regex should compile"));
+        assert!(!is_valid_email("user..name@example.com").expect("Regex should compile"));
+        assert!(!is_valid_email("user@.example.com").expect("Regex should compile"));
+        assert!(!is_valid_email("user@example.com.").expect("Regex should compile"));
+        assert!(!is_valid_email("user@example_domain.com").expect("Regex should compile"));
+        assert!(!is_valid_email("user@example com").expect("Regex should compile")); // Space in domain
+        assert!(!is_valid_email("user@example.").expect("Regex should compile")); // Trailing dot in domain
 
         // Extended invalid edge cases
-        assert!(!is_valid_email("")); // empty
-        assert!(!is_valid_email(" ")); // whitespace
-        assert!(!is_valid_email("user@do_main.com")); // underscore in domain
-        assert!(!is_valid_email(".user@domain.com")); // leading dot in local part
-        assert!(!is_valid_email("user.@domain.com")); // trailing dot in local part
-        assert!(!is_valid_email("user..name@domain.com")); // consecutive dots in local part
-        assert!(!is_valid_email("user@domain.-com")); // TLD starts with dash
-        assert!(!is_valid_email("user@domain.com-")); // TLD ends with dash
-        assert!(!is_valid_email("user@domain-.com")); // Domain ends with dash
+        assert!(!is_valid_email("").expect("Regex should compile")); // empty
+        assert!(!is_valid_email(" ").expect("Regex should compile")); // whitespace
+        assert!(!is_valid_email("user@do_main.com").expect("Regex should compile")); // underscore in domain
+        assert!(!is_valid_email(".user@domain.com").expect("Regex should compile")); // leading dot in local part
+        assert!(!is_valid_email("user.@domain.com").expect("Regex should compile")); // trailing dot in local part
+        assert!(!is_valid_email("user..name@domain.com").expect("Regex should compile")); // consecutive dots in local part
+        assert!(!is_valid_email("user@domain.-com").expect("Regex should compile")); // TLD starts with dash
+        assert!(!is_valid_email("user@domain.com-").expect("Regex should compile")); // TLD ends with dash
+        assert!(!is_valid_email("user@domain-.com").expect("Regex should compile")); // Domain ends with dash
 
         // very long local part (assuming 64 chars limit isn't strictly enforced by the regex but let's see,
         // actually the current regex doesn't seem to bound the local part length.
@@ -664,19 +666,19 @@ mod tests {
 
         // Valid length label
         let valid_label = "a".repeat(63);
-        assert!(is_valid_email(&format!("user@{}.com", valid_label)));
+        assert!(is_valid_email(&format!("user@{}.com", valid_label)).expect("Regex should compile"));
 
         // Invalid length label (> 63 characters)
         let invalid_label = "a".repeat(64);
-        assert!(!is_valid_email(&format!("user@{}.com", invalid_label)));
+        assert!(!is_valid_email(&format!("user@{}.com", invalid_label)).expect("Regex should compile"));
 
         // Length limit (max 254 chars)
         let long_email = format!("{}@example.com", "a".repeat(250));
-        assert!(!is_valid_email(&long_email));
+        assert!(!is_valid_email(&long_email).expect("Regex should compile"));
 
         // ReDoS protection test
         let evil_email = format!("user@{}!", "a.".repeat(100));
-        assert!(!is_valid_email(&evil_email));
+        assert!(!is_valid_email(&evil_email).expect("Regex should compile"));
     }
 
     #[test]
