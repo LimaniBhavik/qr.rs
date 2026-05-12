@@ -48,6 +48,10 @@ fn is_valid_email(email: &str) -> bool {
 }
 
 fn is_valid_phone(phone: &str) -> bool {
+    // Ensure the phone number contains at least one digit and isn't just symbols/whitespace
+    if !phone.chars().any(|c| c.is_ascii_digit()) {
+        return false;
+    }
     static PHONE_REGEX: OnceLock<Regex> = OnceLock::new();
     PHONE_REGEX
         .get_or_init(|| {
@@ -491,6 +495,35 @@ mod tests {
         assert!(!vcard.contains("\nFN:"));
         assert!(!vcard.contains("\nN:"));
         assert!(vcard.contains("EMAIL:test@example.com"));
+    }
+
+    #[test]
+    fn test_is_valid_phone() {
+        // Valid phone numbers
+        assert!(is_valid_phone("+1234567890"));
+        assert!(is_valid_phone("1234567890"));
+        assert!(is_valid_phone("+44 20 7946 0958"));
+        assert!(is_valid_phone("0123-456-789"));
+        assert!(is_valid_phone("(012) 345-6789"));
+        assert!(is_valid_phone("123.456.7890"));
+        assert!(is_valid_phone("+1.123.456.7890"));
+        assert!(is_valid_phone("1234567")); // Exactly 7 chars (minimum)
+        assert!(is_valid_phone("12345678901234567890")); // Exactly 20 chars (maximum)
+
+        // Invalid phone numbers
+        assert!(!is_valid_phone("123456")); // Too short (6 chars)
+        assert!(!is_valid_phone("123456789012345678901")); // Too long (21 chars)
+        assert!(!is_valid_phone("phone123")); // Contains letters
+        assert!(!is_valid_phone("+12345+678")); // Multiple +
+        assert!(!is_valid_phone("++123456789")); // Multiple leading +
+        assert!(!is_valid_phone("123456789+")); // Trailing +
+        assert!(!is_valid_phone("123 456 789 012 345 678 901")); // Too long with spaces
+        assert!(!is_valid_phone("")); // Empty
+        assert!(!is_valid_phone("       ")); // Only spaces
+        assert!(!is_valid_phone(".......")); // Only dots
+        assert!(!is_valid_phone("-------")); // Only hyphens
+        assert!(!is_valid_phone("()()()()")); // Only parentheses
+        assert!(!is_valid_phone("!@#$%^&*")); // Special characters not allowed
     }
 
     #[test]
