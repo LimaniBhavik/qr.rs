@@ -16,11 +16,13 @@ pub fn format_url_original(url: &str) -> String {
     }
 }
 
+use std::borrow::Cow;
+
 // Optimized implementation
-pub fn format_url_optimized(url: &str) -> String {
+pub fn format_url_optimized(url: &str) -> Cow<'_, str> {
     let trimmed = url.trim();
     if trimmed.is_empty() {
-        return String::new();
+        return Cow::Borrowed("");
     }
 
     let bytes = trimmed.as_bytes();
@@ -28,9 +30,9 @@ pub fn format_url_optimized(url: &str) -> String {
     let is_https = bytes.len() >= 8 && bytes[..8].eq_ignore_ascii_case(b"https://");
 
     if is_http || is_https {
-        trimmed.to_string()
+        Cow::Borrowed(trimmed)
     } else {
-        format!("https://{}", trimmed)
+        Cow::Owned(format!("https://{}", trimmed))
     }
 }
 

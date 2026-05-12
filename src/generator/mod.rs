@@ -104,7 +104,7 @@ impl QRGenerator {
         debug!("Generating QR code for data: {:?}", self.data);
 
         let content = match &self.data {
-            QRData::URL(url) => Cow::Owned(format_url(url)),
+            QRData::URL(url) => format_url(url),
             QRData::Text(text) => Cow::Borrowed(text.as_str()),
             QRData::Contact(contact) => {
                 contact.validate()?;

@@ -1,6 +1,7 @@
 use crate::error::QRError;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::sync::OnceLock;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
@@ -140,10 +141,10 @@ pub enum QRData {
     Location(LocationData),
 }
 
-pub fn format_url(url: &str) -> String {
+pub fn format_url(url: &str) -> Cow<'_, str> {
     let trimmed = url.trim();
     if trimmed.is_empty() {
-        return String::new();
+        return Cow::Borrowed("");
     }
 
     let bytes = trimmed.as_bytes();
@@ -151,9 +152,9 @@ pub fn format_url(url: &str) -> String {
     let is_https = bytes.len() >= 8 && bytes[..8].eq_ignore_ascii_case(b"https://");
 
     if is_http || is_https {
-        trimmed.to_string()
+        Cow::Borrowed(trimmed)
     } else {
-        format!("https://{}", trimmed)
+        Cow::Owned(format!("https://{}", trimmed))
     }
 }
 
