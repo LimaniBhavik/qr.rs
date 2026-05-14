@@ -50,7 +50,10 @@ fn is_valid_email(email: &str) -> Result<bool, QRError> {
         return Ok(false);
     }
     static EMAIL_REGEX: OnceLock<Result<Regex, String>> = OnceLock::new();
-    let regex = get_or_init_regex(&EMAIL_REGEX, r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$")?;
+    let regex = get_or_init_regex(
+        &EMAIL_REGEX,
+        r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$",
+    )?;
     Ok(regex.is_match(email))
 }
 
@@ -593,7 +596,9 @@ mod tests {
         assert!(is_valid_email(&long_domain).expect("Regex should compile"));
 
         // Complex multi-subdomains
-        assert!(is_valid_email("user.name.with.dots@sub.domain.co.uk").expect("Regex should compile"));
+        assert!(
+            is_valid_email("user.name.with.dots@sub.domain.co.uk").expect("Regex should compile")
+        );
         assert!(is_valid_email("user@sub.sub.sub.domain.com").expect("Regex should compile"));
 
         // Invalid emails - Missing parts
@@ -668,7 +673,9 @@ mod tests {
 
         // Invalid length label (> 63 characters)
         let invalid_label = "a".repeat(64);
-        assert!(!is_valid_email(&format!("user@{}.com", invalid_label)).expect("Regex should compile"));
+        assert!(
+            !is_valid_email(&format!("user@{}.com", invalid_label)).expect("Regex should compile")
+        );
 
         // Length limit (max 254 chars)
         let long_email = format!("{}@example.com", "a".repeat(250));
