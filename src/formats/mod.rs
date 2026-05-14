@@ -245,9 +245,18 @@ pub fn generate_vcard(contact: &ContactData) -> String {
         vcard.push('\n');
     }
 
-    if !contact.website.is_empty() {
+    let trimmed_website = contact.website.trim();
+    if !trimmed_website.is_empty() {
         vcard.push_str("URL:");
-        escape_vcard_value_to(&format_url(&contact.website), &mut vcard);
+        let bytes = trimmed_website.as_bytes();
+        let is_http = bytes.len() >= 7 && bytes[..7].eq_ignore_ascii_case(b"http://");
+        let is_https = bytes.len() >= 8 && bytes[..8].eq_ignore_ascii_case(b"https://");
+
+        if !is_http && !is_https {
+            // "https://" escaped is "https\://"
+            vcard.push_str("https\\://");
+        }
+        escape_vcard_value_to(trimmed_website, &mut vcard);
         vcard.push('\n');
     }
 
