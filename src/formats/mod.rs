@@ -54,17 +54,14 @@ fn is_valid_email(email: &str) -> Result<bool, QRError> {
     Ok(regex.is_match(email))
 }
 
-fn is_valid_phone(phone: &str) -> bool {
+fn is_valid_phone(phone: &str) -> Result<bool, QRError> {
     // Ensure the phone number contains at least one digit and isn't just symbols/whitespace
     if !phone.chars().any(|c| c.is_ascii_digit()) {
-        return false;
+        return Ok(false);
     }
-    static PHONE_REGEX: OnceLock<Regex> = OnceLock::new();
-    PHONE_REGEX
-        .get_or_init(|| {
-            Regex::new(r"^\+?[0-9\s\-()\.]{7,20}$").expect("Invalid phone regex pattern")
-        })
-        .is_match(phone)
+    static PHONE_REGEX: OnceLock<Result<Regex, String>> = OnceLock::new();
+    let regex = get_or_init_regex(&PHONE_REGEX, r"^\+?[0-9\s\-()\.]{7,20}$")?;
+    Ok(regex.is_match(phone))
 }
 
 fn is_valid_url(url: &str) -> Result<bool, QRError> {
@@ -503,30 +500,30 @@ mod tests {
     #[test]
     fn test_is_valid_phone() {
         // Valid phone numbers
-        assert!(is_valid_phone("+1234567890"));
-        assert!(is_valid_phone("1234567890"));
-        assert!(is_valid_phone("+44 20 7946 0958"));
-        assert!(is_valid_phone("0123-456-789"));
-        assert!(is_valid_phone("(012) 345-6789"));
-        assert!(is_valid_phone("123.456.7890"));
-        assert!(is_valid_phone("+1.123.456.7890"));
-        assert!(is_valid_phone("1234567")); // Exactly 7 chars (minimum)
-        assert!(is_valid_phone("12345678901234567890")); // Exactly 20 chars (maximum)
+        assert!(is_valid_phone("+1234567890").unwrap());
+        assert!(is_valid_phone("1234567890").unwrap());
+        assert!(is_valid_phone("+44 20 7946 0958").unwrap());
+        assert!(is_valid_phone("0123-456-789").unwrap());
+        assert!(is_valid_phone("(012) 345-6789").unwrap());
+        assert!(is_valid_phone("123.456.7890").unwrap());
+        assert!(is_valid_phone("+1.123.456.7890").unwrap());
+        assert!(is_valid_phone("1234567").unwrap()); // Exactly 7 chars (minimum)
+        assert!(is_valid_phone("12345678901234567890").unwrap()); // Exactly 20 chars (maximum)
 
         // Invalid phone numbers
-        assert!(!is_valid_phone("123456")); // Too short (6 chars)
-        assert!(!is_valid_phone("123456789012345678901")); // Too long (21 chars)
-        assert!(!is_valid_phone("phone123")); // Contains letters
-        assert!(!is_valid_phone("+12345+678")); // Multiple +
-        assert!(!is_valid_phone("++123456789")); // Multiple leading +
-        assert!(!is_valid_phone("123456789+")); // Trailing +
-        assert!(!is_valid_phone("123 456 789 012 345 678 901")); // Too long with spaces
-        assert!(!is_valid_phone("")); // Empty
-        assert!(!is_valid_phone("       ")); // Only spaces
-        assert!(!is_valid_phone(".......")); // Only dots
-        assert!(!is_valid_phone("-------")); // Only hyphens
-        assert!(!is_valid_phone("()()()()")); // Only parentheses
-        assert!(!is_valid_phone("!@#$%^&*")); // Special characters not allowed
+        assert!(!is_valid_phone("123456").unwrap()); // Too short (6 chars)
+        assert!(!is_valid_phone("123456789012345678901").unwrap()); // Too long (21 chars)
+        assert!(!is_valid_phone("phone123").unwrap()); // Contains letters
+        assert!(!is_valid_phone("+12345+678").unwrap()); // Multiple +
+        assert!(!is_valid_phone("++123456789").unwrap()); // Multiple leading +
+        assert!(!is_valid_phone("123456789+").unwrap()); // Trailing +
+        assert!(!is_valid_phone("123 456 789 012 345 678 901").unwrap()); // Too long with spaces
+        assert!(!is_valid_phone("").unwrap()); // Empty
+        assert!(!is_valid_phone("       ").unwrap()); // Only spaces
+        assert!(!is_valid_phone(".......").unwrap()); // Only dots
+        assert!(!is_valid_phone("-------").unwrap()); // Only hyphens
+        assert!(!is_valid_phone("()()()()").unwrap()); // Only parentheses
+        assert!(!is_valid_phone("!@#$%^&*").unwrap()); // Special characters not allowed
     }
 
     #[test]
