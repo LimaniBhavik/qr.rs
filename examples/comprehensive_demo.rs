@@ -1,5 +1,5 @@
 use qr_rs::error::QRError;
-use qr_rs::image::{DynamicImage, RgbaImage};
+use qr_rs::image::{DynamicImage, Rgba, RgbaImage};
 use qr_rs::qrcode::EcLevel;
 use qr_rs::{ContactData, LocationData, QRBuilder, WifiData, WifiEncryption};
 use std::fs;
@@ -75,8 +75,8 @@ fn main() -> Result<(), QRError> {
     // 6. QR Code with Logo
     println!("Generating QR code with logo...");
     let mut logo = RgbaImage::new(50, 50);
-    for pixel in logo.chunks_exact_mut(4) {
-        pixel.copy_from_slice(&[255, 0, 0, 255]); // Red square
+    for pixel in logo.pixels_mut() {
+        *pixel = Rgba([255, 0, 0, 255]); // Red square
     }
     let logo_dynamic = DynamicImage::ImageRgba8(logo);
 

@@ -162,12 +162,12 @@ fn main() -> Result<(), QRError> {
 
 #### Advanced Customization
 ```rust
-use qr_rs::{QRBuilder, ContactData, qrcode::EcLevel, utils::WHITE};
+use qr_rs::{QRBuilder, ContactData, qrcode::EcLevel};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Custom colors: Red foreground, White background
     let fg = [255, 0, 0, 255];
-    let bg = WHITE;
+    let bg = [255, 255, 255, 255];
 
     let contact = ContactData {
         first_name: "John".into(),
