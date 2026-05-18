@@ -12,90 +12,62 @@ enum Mode {
     Contact,
 }
 
-#[derive(PartialEq, Clone, Default, Debug)]
-struct ContactFields {
-    pub first_name: AttrValue,
-    pub last_name: AttrValue,
-    pub phone: AttrValue,
-    pub email: AttrValue,
-    pub organization: AttrValue,
-    pub website: AttrValue,
-}
-
-impl From<&ContactFields> for ContactData {
-    fn from(fields: &ContactFields) -> Self {
-        Self {
-            first_name: fields.first_name.to_string(),
-            last_name: fields.last_name.to_string(),
-            phone: fields.phone.to_string(),
-            email: fields.email.to_string(),
-            organization: fields.organization.to_string(),
-            website: fields.website.to_string(),
-        }
-    }
-}
-
 #[function_component(QRWeb)]
 pub fn qr_web() -> Html {
     let mode = use_state(|| Mode::Url);
-    let url_input = use_state(AttrValue::default);
-    let text_input = use_state(AttrValue::default);
-    let contact = use_state(ContactFields::default);
+    let url_input = use_state(String::new);
+    let text_input = use_state(String::new);
+    let contact = use_state(ContactData::default);
 
     // Customization state
-    let ec_level = use_state(|| AttrValue::from("H"));
-    let fg_color = use_state(|| AttrValue::from("#000000"));
-    let bg_color = use_state(|| AttrValue::from("#FFFFFF"));
+    let ec_level = use_state(|| "H".to_string());
+    let fg_color = use_state(|| "#000000".to_string());
+    let bg_color = use_state(|| "#FFFFFF".to_string());
 
-    let qr_data_url = use_memo(
-        (
-            *mode,
-            url_input.clone(),
-            text_input.clone(),
-            contact.clone(),
-            ec_level.clone(),
-            fg_color.clone(),
-            bg_color.clone(),
-        ),
-        |(mode, url_input, text_input, contact, ec_level, fg_color, bg_color)| {
-            let mut builder = QRBuilder::new();
+    let qr_data_url = {
+        let mode = *mode;
+        let url = (*url_input).clone();
+        let text = (*text_input).clone();
+        let contact_data = (*contact).clone();
+        let ec = (*ec_level).clone();
+        let fg = (*fg_color).clone();
+        let bg = (*bg_color).clone();
 
-            // Apply EC level
-            let level = match ec_level.as_str() {
-                "L" => qr_rs::qrcode::EcLevel::L,
-                "M" => qr_rs::qrcode::EcLevel::M,
-                "Q" => qr_rs::qrcode::EcLevel::Q,
-                _ => qr_rs::qrcode::EcLevel::H,
-            };
-            builder = builder.error_correction(level);
+        let mut builder = QRBuilder::new();
 
-            // Apply colors
-            if let (Some(fg_rgba), Some(bg_rgba)) =
-                (parse_hex_color(fg_color), parse_hex_color(bg_color))
-            {
-                builder = builder.colors(fg_rgba, bg_rgba);
-            }
+        // Apply EC level
+        let level = match ec.as_str() {
+            "L" => qr_rs::qrcode::EcLevel::L,
+            "M" => qr_rs::qrcode::EcLevel::M,
+            "Q" => qr_rs::qrcode::EcLevel::Q,
+            _ => qr_rs::qrcode::EcLevel::H,
+        };
+        builder = builder.error_correction(level);
 
-            let data = match mode {
-                Mode::Url => QRData::URL(url_input.to_string()),
-                Mode::Text => QRData::Text(text_input.to_string()),
-                Mode::Contact => QRData::Contact(ContactData::from(&**contact)),
-            };
+        // Apply colors
+        if let (Some(fg_rgba), Some(bg_rgba)) = (parse_hex_color(&fg), parse_hex_color(&bg)) {
+            builder = builder.colors(fg_rgba, bg_rgba);
+        }
 
-            builder = builder.data(data);
+        let data = match mode {
+            Mode::Url => QRData::URL(url),
+            Mode::Text => QRData::Text(text),
+            Mode::Contact => QRData::Contact(contact_data),
+        };
 
-            if let Ok(generator) = builder.build() {
-                if let Ok(bytes) = generator.to_png(300, None) {
-                    let b64 = general_purpose::STANDARD.encode(&bytes);
-                    Some(format!("data:image/png;base64,{}", b64))
-                } else {
-                    None
-                }
+        builder = builder.data(data);
+
+        if let Ok(generator) = builder.build() {
+            if let Ok(bytes) = generator.to_png(300, None) {
+                let b64 = general_purpose::STANDARD.encode(&bytes);
+                Some(format!("data:image/png;base64,{}", b64))
             } else {
                 None
             }
-        },
-    );
+        } else {
+            None
+        }
+    };
 
     let on_mode_url = {
         let mode = mode.clone();
@@ -133,7 +105,7 @@ pub fn qr_web() -> Html {
                                 let url_input = url_input.clone();
                                 Callback::from(move |e: InputEvent| {
                                     let input: HtmlInputElement = e.target_unchecked_into();
-                                    url_input.set(AttrValue::from(input.value()));
+                                    url_input.set(input.value());
                                 })
                             }
                         />
@@ -147,7 +119,7 @@ pub fn qr_web() -> Html {
                                 let text_input = text_input.clone();
                                 Callback::from(move |e: InputEvent| {
                                     let input: HtmlTextAreaElement = e.target_unchecked_into();
-                                    text_input.set(AttrValue::from(input.value()));
+                                    text_input.set(input.value());
                                 })
                             }
                         />
@@ -159,7 +131,7 @@ pub fn qr_web() -> Html {
                             <input type="text" value={contact.first_name.clone()}
                                 oninput={let contact = contact.clone(); Callback::from(move |e: InputEvent| {
                                     let val = e.target_unchecked_into::<HtmlInputElement>().value();
-                                    let mut c = (*contact).clone(); c.first_name = AttrValue::from(val); contact.set(c);
+                                    let mut c = (*contact).clone(); c.first_name = val; contact.set(c);
                                 })} />
                          </div>
                          <div class="input-group">
@@ -167,7 +139,7 @@ pub fn qr_web() -> Html {
                             <input type="text" value={contact.last_name.clone()}
                                 oninput={let contact = contact.clone(); Callback::from(move |e: InputEvent| {
                                     let val = e.target_unchecked_into::<HtmlInputElement>().value();
-                                    let mut c = (*contact).clone(); c.last_name = AttrValue::from(val); contact.set(c);
+                                    let mut c = (*contact).clone(); c.last_name = val; contact.set(c);
                                 })} />
                          </div>
                          <div class="input-group">
@@ -175,7 +147,7 @@ pub fn qr_web() -> Html {
                             <input type="email" value={contact.email.clone()}
                                 oninput={let contact = contact.clone(); Callback::from(move |e: InputEvent| {
                                     let val = e.target_unchecked_into::<HtmlInputElement>().value();
-                                    let mut c = (*contact).clone(); c.email = AttrValue::from(val); contact.set(c);
+                                    let mut c = (*contact).clone(); c.email = val; contact.set(c);
                                 })} />
                          </div>
                          <div class="input-group">
@@ -183,7 +155,7 @@ pub fn qr_web() -> Html {
                             <input type="tel" value={contact.phone.clone()}
                                 oninput={let contact = contact.clone(); Callback::from(move |e: InputEvent| {
                                     let val = e.target_unchecked_into::<HtmlInputElement>().value();
-                                    let mut c = (*contact).clone(); c.phone = AttrValue::from(val); contact.set(c);
+                                    let mut c = (*contact).clone(); c.phone = val; contact.set(c);
                                 })} />
                          </div>
                          <div class="input-group">
@@ -191,7 +163,7 @@ pub fn qr_web() -> Html {
                             <input type="text" value={contact.organization.clone()}
                                 oninput={let contact = contact.clone(); Callback::from(move |e: InputEvent| {
                                     let val = e.target_unchecked_into::<HtmlInputElement>().value();
-                                    let mut c = (*contact).clone(); c.organization = AttrValue::from(val); contact.set(c);
+                                    let mut c = (*contact).clone(); c.organization = val; contact.set(c);
                                 })} />
                          </div>
                          <div class="input-group">
@@ -199,7 +171,7 @@ pub fn qr_web() -> Html {
                             <input type="url" value={contact.website.clone()}
                                 oninput={let contact = contact.clone(); Callback::from(move |e: InputEvent| {
                                     let val = e.target_unchecked_into::<HtmlInputElement>().value();
-                                    let mut c = (*contact).clone(); c.website = AttrValue::from(val); contact.set(c);
+                                    let mut c = (*contact).clone(); c.website = val; contact.set(c);
                                 })} />
                          </div>
                     </div>
@@ -212,7 +184,7 @@ pub fn qr_web() -> Html {
                     <label>{"Error Correction Level"}</label>
                     <select onchange={let ec_level = ec_level.clone(); Callback::from(move |e: Event| {
                         let input: HtmlInputElement = e.target_unchecked_into();
-                        ec_level.set(AttrValue::from(input.value()));
+                        ec_level.set(input.value());
                     })}>
                         <option value="L" selected={*ec_level == "L"}>{"Low (7%)"}</option>
                         <option value="M" selected={*ec_level == "M"}>{"Medium (15%)"}</option>
@@ -225,7 +197,7 @@ pub fn qr_web() -> Html {
                     <input type="color" value={(*fg_color).clone()}
                         oninput={let fg_color = fg_color.clone(); Callback::from(move |e: InputEvent| {
                             let input: HtmlInputElement = e.target_unchecked_into();
-                            fg_color.set(AttrValue::from(input.value()));
+                            fg_color.set(input.value());
                         })}
                     />
                 </div>
@@ -234,17 +206,17 @@ pub fn qr_web() -> Html {
                     <input type="color" value={(*bg_color).clone()}
                         oninput={let bg_color = bg_color.clone(); Callback::from(move |e: InputEvent| {
                             let input: HtmlInputElement = e.target_unchecked_into();
-                            bg_color.set(AttrValue::from(input.value()));
+                            bg_color.set(input.value());
                         })}
                     />
                 </div>
             </div>
 
-            if let Some(data_url) = &*qr_data_url {
+            if let Some(data_url) = qr_data_url {
                 <div class="qr-display">
                     <img src={data_url.clone()} alt="QR Code" style="max-width: 300px; border: 1px solid #ccc;" />
                     <br/>
-                    <a href={data_url.clone()} download="qr.png" class="download-btn">{"Download PNG"}</a>
+                    <a href={data_url} download="qr.png" class="download-btn">{"Download PNG"}</a>
                 </div>
             }
         </div>

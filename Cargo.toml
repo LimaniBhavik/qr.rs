@@ -27,37 +27,6 @@ serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
 regex = "1.10"
 
-[dev-dependencies]
-criterion = "0.5"
-
 [lib]
 name = "qr_rs"
 path = "src/lib.rs"
-
-[[bench]]
-name = "escape_bench"
-harness = false
-
-[[bench]]
-name = "escape_vcard_bench"
-harness = false
-
-[[bench]]
-name = "test_bench"
-harness = false
-
-[[bench]]
-name = "test_vcard_bench"
-harness = false
-
-[[bench]]
-name = "test_bench_v2"
-harness = false
-
-[[bench]]
-name = "image_bench"
-harness = false
-
-[[bench]]
-name = "format_url_bench"
-harness = false
