@@ -159,6 +159,8 @@ fn escape_vcard_value_to(s: &str, out: &mut String) {
             ',' => out.push_str("\\,"),
             ';' => out.push_str("\\;"),
             ':' => out.push_str("\\:"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
             _ => out.push(c),
         }
     }
@@ -298,6 +300,22 @@ mod tests {
         assert!(vcard.contains("N:Doe\\;Smith;John\\, Jr.;;;"));
         assert!(vcard.contains("ORG:ACME\\\\Corp"));
         assert!(vcard.contains("EMAIL:john\\:smith@example.com"));
+    }
+
+    #[test]
+    fn test_vcard_field_injection() {
+        // Attempt to inject a new field using newlines
+        let contact = ContactData {
+            organization: "Evil Corp\nURL:http://malicious.com\r\nTEL:+12345".to_string(),
+            ..ContactData::default()
+        };
+
+        let vcard = generate_vcard(&contact);
+        // Ensure newlines are properly escaped and the injected strings don't become fields
+        assert!(vcard.contains("ORG:Evil Corp\\nURL\\:http\\://malicious.com\\r\\nTEL\\:+12345"));
+        assert!(!vcard.contains("\nURL:"));
+        assert!(!vcard.contains("\nTEL:"));
+        assert!(!vcard.contains("\r\nTEL:"));
     }
 
     #[test]
