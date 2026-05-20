@@ -37,3 +37,7 @@ path = "src/lib.rs"
 [[bench]]
 name = "vcard_bench"
 harness = false
+
+[[bench]]
+name = "image_bench"
+harness = false
