@@ -130,14 +130,16 @@ impl QRGenerator {
         let width = qr_image.width();
         let height = qr_image.height();
 
-        let mut raw_vec = Vec::with_capacity((width * height * 4) as usize);
-        for pixel in qr_image.pixels() {
-            if pixel.0[0] == 0 {
-                raw_vec.extend_from_slice(&self.foreground_color.0);
-            } else {
-                raw_vec.extend_from_slice(&self.background_color.0);
-            }
-        }
+        let raw_vec: Vec<u8> = qr_image
+            .pixels()
+            .flat_map(|pixel| {
+                if pixel.0[0] == 0 {
+                    self.foreground_color.0
+                } else {
+                    self.background_color.0
+                }
+            })
+            .collect();
 
         let mut image = RgbaImage::from_raw(width, height, raw_vec)
             .ok_or_else(|| QRError::GenerationError("Dimension mismatch for image".to_string()))?;
