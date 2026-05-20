@@ -135,17 +135,20 @@ pub enum QRData {
     Location(LocationData),
 }
 
+fn has_http_protocol(url: &str) -> bool {
+    let bytes = url.as_bytes();
+    let is_http = bytes.len() >= 7 && bytes[..7].eq_ignore_ascii_case(b"http://");
+    let is_https = bytes.len() >= 8 && bytes[..8].eq_ignore_ascii_case(b"https://");
+    is_http || is_https
+}
+
 pub fn format_url(url: &str) -> std::borrow::Cow<'_, str> {
     let trimmed = url.trim();
     if trimmed.is_empty() {
         return std::borrow::Cow::Borrowed("");
     }
 
-    let bytes = trimmed.as_bytes();
-    let is_http = bytes.len() >= 7 && bytes[..7].eq_ignore_ascii_case(b"http://");
-    let is_https = bytes.len() >= 8 && bytes[..8].eq_ignore_ascii_case(b"https://");
-
-    if is_http || is_https {
+    if has_http_protocol(trimmed) {
         std::borrow::Cow::Borrowed(trimmed)
     } else {
         std::borrow::Cow::Owned(format!("https://{}", trimmed))
@@ -208,11 +211,7 @@ pub fn generate_vcard(contact: &ContactData) -> String {
         vcard.push_str("URL:");
         let trimmed = contact.website.trim();
         if !trimmed.is_empty() {
-            let bytes = trimmed.as_bytes();
-            let is_http = bytes.len() >= 7 && bytes[..7].eq_ignore_ascii_case(b"http://");
-            let is_https = bytes.len() >= 8 && bytes[..8].eq_ignore_ascii_case(b"https://");
-
-            if !is_http && !is_https {
+            if !has_http_protocol(trimmed) {
                 vcard.push_str("https\\://");
             }
             escape_vcard_value_to(trimmed, &mut vcard);
