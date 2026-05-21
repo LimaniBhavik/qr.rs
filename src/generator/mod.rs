@@ -170,13 +170,12 @@ impl QRGenerator {
 
         // Pre-allocate capacity to reduce reallocations during PNG compression
         let capacity = (image.width() * image.height() / 10) as usize;
-        let mut bytes: Vec<u8> = Vec::with_capacity(capacity);
-        let mut cursor = Cursor::new(&mut bytes);
+        let mut cursor = Cursor::new(Vec::with_capacity(capacity));
         image
             .write_to(&mut cursor, ImageFormat::Png)
             .map_err(QRError::ImageError)?;
 
-        Ok(bytes)
+        Ok(cursor.into_inner())
     }
 
     pub fn to_svg(&self) -> Result<String, QRError> {
