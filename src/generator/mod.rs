@@ -100,22 +100,22 @@ impl QRGenerator {
 
         let content = match &self.data {
             QRData::URL(url) => format_url(url),
-            QRData::Text(text) => text.clone(),
+            QRData::Text(text) => std::borrow::Cow::Borrowed(text.as_str()),
             QRData::Contact(contact) => {
                 contact.validate()?;
-                generate_vcard(contact)
+                std::borrow::Cow::Owned(generate_vcard(contact))
             }
             QRData::Wifi(wifi) => {
                 wifi.validate()?;
-                generate_wifi(wifi)
+                std::borrow::Cow::Owned(generate_wifi(wifi))
             }
             QRData::Location(location) => {
                 location.validate()?;
-                generate_geo_uri(location)
+                std::borrow::Cow::Owned(generate_geo_uri(location))
             }
         };
 
-        QrCode::with_error_correction_level(&content, self.error_correction)
+        QrCode::with_error_correction_level(content.as_bytes(), self.error_correction)
             .map_err(QRError::QrGenerationError)
     }
 
@@ -130,15 +130,21 @@ impl QRGenerator {
         let width = qr_image.width();
         let height = qr_image.height();
 
-        let mut image = RgbaImage::new(width, height);
+        let pixels: Vec<u8> = qr_image
+            .as_raw()
+            .iter()
+            .flat_map(|&luma| {
+                if luma == 0 {
+                    self.foreground_color.0
+                } else {
+                    self.background_color.0
+                }
+            })
+            .collect();
 
-        for (target_pixel, pixel) in image.pixels_mut().zip(qr_image.pixels()) {
-            *target_pixel = if pixel.0[0] == 0 {
-                self.foreground_color
-            } else {
-                self.background_color
-            };
-        }
+        let mut image = RgbaImage::from_raw(width, height, pixels).ok_or_else(|| {
+            QRError::GenerationError("Failed to create image from raw pixels".to_string())
+        })?;
 
         if let Some(logo_img) = logo {
             info!("Adding logo to QR code");
