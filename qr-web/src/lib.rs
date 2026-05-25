@@ -24,12 +24,12 @@ pub fn qr_web() -> Html {
 
     let qr_data_url = {
         let mode_val = *mode;
-        let url_val = (*url_input).clone();
-        let text_val = (*text_input).clone();
-        let contact_val = (*contact).clone();
-        let ec_val = (*ec_level).clone();
-        let fg_val = (*fg_color).clone();
-        let bg_val = (*bg_color).clone();
+        let url_val = url_input.clone();
+        let text_val = text_input.clone();
+        let contact_val = contact.clone();
+        let ec_val = ec_level.clone();
+        let fg_val = fg_color.clone();
+        let bg_val = bg_color.clone();
 
         use_memo(
             (
@@ -45,7 +45,7 @@ pub fn qr_web() -> Html {
                 let mut builder = QRBuilder::new();
 
                 // Apply EC level
-                let level = match ec.as_str() {
+                let level = match (*ec).as_str() {
                     "L" => qr_rs::qrcode::EcLevel::L,
                     "M" => qr_rs::qrcode::EcLevel::M,
                     "Q" => qr_rs::qrcode::EcLevel::Q,
@@ -59,8 +59,8 @@ pub fn qr_web() -> Html {
                 }
 
                 let data = match mode {
-                    Mode::Url => QRData::URL(url.to_string()),
-                    Mode::Text => QRData::Text(text.to_string()),
+                    Mode::Url => QRData::URL((*url).to_string()),
+                    Mode::Text => QRData::Text((*text).to_string()),
                     Mode::Contact => QRData::Contact(ContactData {
                         first_name: contact.first_name.to_string(),
                         last_name: contact.last_name.to_string(),
