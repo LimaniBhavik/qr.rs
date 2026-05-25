@@ -136,22 +136,23 @@ pub enum QRData {
     Location(LocationData),
 }
 
-fn has_http_protocol(url: &str) -> bool {
+pub fn has_http_protocol(url: &str) -> bool {
     let bytes = url.as_bytes();
-    (bytes.len() >= 7 && bytes[..7].eq_ignore_ascii_case(b"http://"))
-        || (bytes.len() >= 8 && bytes[..8].eq_ignore_ascii_case(b"https://"))
+    let is_http = bytes.len() >= 7 && bytes[..7].eq_ignore_ascii_case(b"http://");
+    let is_https = bytes.len() >= 8 && bytes[..8].eq_ignore_ascii_case(b"https://");
+    is_http || is_https
 }
 
-pub fn format_url(url: &str) -> std::borrow::Cow<'_, str> {
+pub fn format_url(url: &str) -> Cow<'_, str> {
     let trimmed = url.trim();
     if trimmed.is_empty() {
-        return std::borrow::Cow::Borrowed("");
+        return Cow::Borrowed("");
     }
 
     if has_http_protocol(trimmed) {
-        std::borrow::Cow::Borrowed(trimmed)
+        Cow::Borrowed(trimmed)
     } else {
-        std::borrow::Cow::Owned(format!("https://{}", trimmed))
+        Cow::Owned(format!("https://{}", trimmed))
     }
 }
 

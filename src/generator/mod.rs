@@ -130,19 +130,15 @@ impl QRGenerator {
         let width = qr_image.width();
         let height = qr_image.height();
 
-        let pixels: Vec<u8> = qr_image
-            .pixels()
-            .flat_map(|pixel| {
-                if pixel.0[0] == 0 {
-                    self.foreground_color.0
-                } else {
-                    self.background_color.0
-                }
-            })
-            .collect();
+        let mut image = RgbaImage::new(width, height);
 
-        let mut image = RgbaImage::from_raw(width, height, pixels)
-            .ok_or_else(|| QRError::GenerationError("Image dimension mismatch".to_string()))?;
+        for (target_pixel, pixel) in image.pixels_mut().zip(qr_image.pixels()) {
+            *target_pixel = if pixel.0[0] == 0 {
+                self.foreground_color
+            } else {
+                self.background_color
+            };
+        }
 
         if let Some(logo_img) = logo {
             info!("Adding logo to QR code");
@@ -168,8 +164,6 @@ impl QRGenerator {
     pub fn to_png(&self, size: u32, logo: Option<&DynamicImage>) -> Result<Vec<u8>, QRError> {
         let image = self.to_image(size, logo)?;
 
-        // Heuristic: PNGs are compressed, so we allocate ~10% of the raw RGBA pixel count
-        // to minimize reallocations during encoding while not drastically over-allocating.
         let capacity = (image.width() * image.height() / 10) as usize;
         let mut cursor = Cursor::new(Vec::with_capacity(capacity));
         image
