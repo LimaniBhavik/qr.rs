@@ -1,12 +1,15 @@
 use base64::{engine::general_purpose, Engine as _};
 use qr_rs::utils::parse_hex_color;
-use qr_rs::{ContactData, QRBuilder, QRData};
+use qr_rs::{QRBuilder, QRData};
 use wasm_bindgen::prelude::*;
-use web_sys::{HtmlInputElement, HtmlTextAreaElement};
+use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
+mod components;
+use components::*;
+
 #[derive(PartialEq, Clone, Copy, Debug)]
-enum Mode {
+pub enum Mode {
     Url,
     Text,
     Contact,
@@ -49,28 +52,20 @@ pub fn qr_web() -> Html {
 
     let qr_data_url = {
         let mode_val = *mode;
-        let url_val = url_input.clone();
-        let text_val = text_input.clone();
-        let contact_val = contact.clone();
-        let ec_val = ec_level.clone();
-        let fg_val = fg_color.clone();
-        let bg_val = bg_color.clone();
+        let url_val = (*url_input).clone();
+        let text_val = (*text_input).clone();
+        let contact_val = (*contact).clone();
+        let ec_val = (*ec_level).clone();
+        let fg_val = (*fg_color).clone();
+        let bg_val = (*bg_color).clone();
 
         use_memo(
-            (
-                mode_val,
-                url_val,
-                text_val,
-                contact_val,
-                ec_val,
-                fg_val,
-                bg_val,
-            ),
-            |(mode, url, text, contact, ec, fg, bg)| {
+            (mode_val, url_val, text_val, contact_val, ec_val, fg_val, bg_val),
+            |(m, u, t, c, ec, fg, bg)| {
                 let mut builder = QRBuilder::new();
 
                 // Apply EC level
-                let level = match (*ec).as_str() {
+                let level = match ec.as_str() {
                     "L" => qr_rs::qrcode::EcLevel::L,
                     "M" => qr_rs::qrcode::EcLevel::M,
                     "Q" => qr_rs::qrcode::EcLevel::Q,
@@ -94,7 +89,7 @@ pub fn qr_web() -> Html {
                 if let Ok(generator) = builder.build() {
                     if let Ok(bytes) = generator.to_png(300, None) {
                         let b64 = general_purpose::STANDARD.encode(&bytes);
-                        Some(format!("data:image/png;base64,{}", b64))
+                        Some(AttrValue::from(format!("data:image/png;base64,{}", b64)))
                     } else {
                         None
                     }
@@ -118,6 +113,53 @@ pub fn qr_web() -> Html {
         Callback::from(move |_| mode.set(Mode::Contact))
     };
 
+    let on_url_input = {
+        let url_input = url_input.clone();
+        Callback::from(move |e: InputEvent| {
+            let input: HtmlInputElement = e.target_unchecked_into();
+            url_input.set(AttrValue::from(input.value()));
+        })
+    };
+
+    let on_text_input = {
+        let text_input = text_input.clone();
+        Callback::from(move |e: InputEvent| {
+            let input: web_sys::HtmlTextAreaElement = e.target_unchecked_into();
+            text_input.set(AttrValue::from(input.value()));
+        })
+    };
+
+    let on_contact_update = {
+        let contact = contact.clone();
+        Callback::from(move |c: ContactState| {
+            contact.set(c);
+        })
+    };
+
+    let on_ec_change = {
+        let ec_level = ec_level.clone();
+        Callback::from(move |e: Event| {
+            let input: HtmlInputElement = e.target_unchecked_into();
+            ec_level.set(AttrValue::from(input.value()));
+        })
+    };
+
+    let on_fg_input = {
+        let fg_color = fg_color.clone();
+        Callback::from(move |e: InputEvent| {
+            let input: HtmlInputElement = e.target_unchecked_into();
+            fg_color.set(AttrValue::from(input.value()));
+        })
+    };
+
+    let on_bg_input = {
+        let bg_color = bg_color.clone();
+        Callback::from(move |e: InputEvent| {
+            let input: HtmlInputElement = e.target_unchecked_into();
+            bg_color.set(AttrValue::from(input.value()));
+        })
+    };
+
     html! {
         <div class="app-container">
             <header>
@@ -125,11 +167,12 @@ pub fn qr_web() -> Html {
                 <p>{"Quantum Response Generator"}</p>
             </header>
 
-            <div class="mode-selector">
-                <button onclick={on_mode_url} class={if *mode == Mode::Url { "active" } else { "" }}>{"URL"}</button>
-                <button onclick={on_mode_text} class={if *mode == Mode::Text { "active" } else { "" }}>{"Text"}</button>
-                <button onclick={on_mode_contact} class={if *mode == Mode::Contact { "active" } else { "" }}>{"Contact"}</button>
-            </div>
+            <ModeSelector
+                current_mode={*mode}
+                on_mode_url={on_mode_url}
+                on_mode_text={on_mode_text}
+                on_mode_contact={on_mode_contact}
+            />
 
             <div class="input-area">
                 if *mode == Mode::Url {
