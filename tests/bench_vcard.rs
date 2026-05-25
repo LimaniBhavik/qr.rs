@@ -10,15 +10,17 @@ pub struct ContactData {
     pub website: String,
 }
 
+fn has_http_protocol(url: &str) -> bool {
+    url.to_lowercase().starts_with("http://") || url.to_lowercase().starts_with("https://")
+}
+
 pub fn format_url(url: &str) -> String {
     let trimmed = url.trim();
     if trimmed.is_empty() {
         return String::new();
     }
 
-    if trimmed.to_lowercase().starts_with("http://")
-        || trimmed.to_lowercase().starts_with("https://")
-    {
+    if has_http_protocol(trimmed) {
         trimmed.to_string()
     } else {
         format!("https://{}", trimmed)
