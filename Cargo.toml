@@ -29,6 +29,7 @@ regex = "1.10"
 
 [dev-dependencies]
 criterion = "0.5.1"
+rayon = "1.12.0"
 
 [lib]
 name = "qr_rs"
@@ -44,4 +45,8 @@ harness = false
 
 [[bench]]
 name = "image_bench"
+harness = false
+
+[[bench]]
+name = "hex_color_bench"
 harness = false
