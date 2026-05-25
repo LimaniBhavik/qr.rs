@@ -130,15 +130,19 @@ impl QRGenerator {
         let width = qr_image.width();
         let height = qr_image.height();
 
-        let mut image = RgbaImage::new(width, height);
+        let pixels: Vec<u8> = qr_image
+            .pixels()
+            .flat_map(|pixel| {
+                if pixel.0[0] == 0 {
+                    self.foreground_color.0
+                } else {
+                    self.background_color.0
+                }
+            })
+            .collect();
 
-        for (target_pixel, pixel) in image.pixels_mut().zip(qr_image.pixels()) {
-            *target_pixel = if pixel.0[0] == 0 {
-                self.foreground_color
-            } else {
-                self.background_color
-            };
-        }
+        let mut image = RgbaImage::from_raw(width, height, pixels)
+            .ok_or_else(|| QRError::GenerationError("Image dimension mismatch".to_string()))?;
 
         if let Some(logo_img) = logo {
             info!("Adding logo to QR code");
