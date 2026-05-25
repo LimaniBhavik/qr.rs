@@ -36,14 +36,6 @@ name = "qr_rs"
 path = "src/lib.rs"
 
 [[bench]]
-name = "vcard_bench"
-harness = false
-
-[[bench]]
-name = "wifi_bench"
-harness = false
-
-[[bench]]
 name = "image_bench"
 harness = false
 

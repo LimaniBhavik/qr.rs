@@ -164,13 +164,13 @@ impl QRGenerator {
     pub fn to_png(&self, size: u32, logo: Option<&DynamicImage>) -> Result<Vec<u8>, QRError> {
         let image = self.to_image(size, logo)?;
 
-        let mut bytes: Vec<u8> = Vec::new();
-        let mut cursor = Cursor::new(&mut bytes);
+        let capacity = (image.width() * image.height() / 10) as usize;
+        let mut cursor = Cursor::new(Vec::with_capacity(capacity));
         image
             .write_to(&mut cursor, ImageFormat::Png)
             .map_err(QRError::ImageError)?;
 
-        Ok(bytes)
+        Ok(cursor.into_inner())
     }
 
     pub fn to_svg(&self) -> Result<String, QRError> {
