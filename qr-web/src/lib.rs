@@ -291,7 +291,7 @@ pub fn qr_web() -> Html {
                 </div>
             </div>
 
-            if let Some(data_url) = qr_data_url.as_ref() {
+            if let Some(data_url) = (*qr_data_url).clone() {
                 <div class="qr-display">
                     <img src={data_url.clone()} alt="QR Code" style="max-width: 300px; border: 1px solid #ccc;" />
                     <br/>

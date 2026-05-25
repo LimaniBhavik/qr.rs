@@ -1,11 +1,9 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use colored::*;
 use dialoguer::{theme::ColorfulTheme, Input, Select};
-use image::ImageReader;
 use indicatif::{ProgressBar, ProgressStyle};
 use qr_rs::utils::parse_hex_color;
 use qr_rs::{ContactData, QRBuilder, QRData};
-use std::fs;
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -288,13 +286,12 @@ fn generate(
     }
 }
 
+
 fn save_svg(generator: &qr_rs::generator::QRGenerator, path: &PathBuf) {
     match generator.to_svg() {
         Ok(svg) => {
-            if let Err(e) = fs::write(path, svg) {
-                eprintln!("{} {}", "Error saving SVG:".red(), e);
-            } else {
-                println!("{} {}", "Saved to".green(), path.display());
+            if let Err(e) = std::fs::write(path, svg) {
+                eprintln!("{} {}", "Error writing SVG:".red(), e);
             }
         }
         Err(e) => eprintln!("{} {}", "Error generating SVG:".red(), e),
@@ -303,56 +300,42 @@ fn save_svg(generator: &qr_rs::generator::QRGenerator, path: &PathBuf) {
 
 fn save_png(
     generator: &qr_rs::generator::QRGenerator,
-    qr: &qr_rs::qrcode::QrCode,
+    _qr: &qr_rs::qrcode::QrCode,
     path: &PathBuf,
     logo_path: Option<PathBuf>,
     scale: Option<u32>,
-    border: Option<u32>,
+    _border: Option<u32>,
 ) {
-    let logo_img = if let Some(l_path) = logo_path {
-        match ImageReader::open(&l_path)
-            .map_err(|e| e.to_string())
-            .and_then(|r| r.decode().map_err(|e| e.to_string()))
-        {
-            Ok(img) => Some(img),
-            Err(e) => {
-                eprintln!("{} {}", "Warning: Failed to load logo:".yellow(), e);
-                None
-            }
+    let size = scale.unwrap_or(25);
+
+    let mut loaded_logo = None;
+    if let Some(l_path) = logo_path {
+        match image::ImageReader::open(&l_path).and_then(|r| r.decode().map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))) {
+            Ok(img) => loaded_logo = Some(img),
+            Err(e) => eprintln!("{} {}", "Warning: Failed to load logo image:".yellow(), e),
         }
-    } else {
-        None
-    };
+    }
 
-    let size = if let Some(s) = scale {
-        let _ = border;
-        let width_modules = qr.width() as u32;
-        (width_modules + 8) * s
-    } else {
-        300
-    };
-
-    match generator.to_png(size, logo_img.as_ref()) {
+    match generator.to_png(size, loaded_logo.as_ref()) {
         Ok(bytes) => {
-            if let Err(e) = fs::write(path, bytes) {
-                eprintln!("{} {}", "Error saving PNG:".red(), e);
-            } else {
-                println!("{} {}", "Saved to".green(), path.display());
+            if let Err(e) = std::fs::write(path, bytes) {
+                eprintln!("{} {}", "Error writing PNG:".red(), e);
             }
         }
-        Err(e) => eprintln!("{} {}", "Error encoding PNG:".red(), e),
+        Err(e) => eprintln!("{} {}", "Error generating PNG:".red(), e),
     }
 }
 
 fn print_terminal_qr(qr: &qr_rs::qrcode::QrCode) {
     let string = qr
         .render::<qr_rs::qrcode::render::unicode::Dense1x2>()
-        .dark_color(qr_rs::qrcode::render::unicode::Dense1x2::Light)
-        .light_color(qr_rs::qrcode::render::unicode::Dense1x2::Dark)
+        .quiet_zone(false)
         .build();
-    println!("\n{}", string);
+    println!("{}", string);
 }
+
 fn prompt_for_output(prompt: &str) -> Result<Option<PathBuf>, String> {
+
     let output: String = Input::with_theme(&ColorfulTheme::default())
         .with_prompt(prompt)
         .allow_empty(true)
