@@ -100,22 +100,22 @@ impl QRGenerator {
 
         let content = match &self.data {
             QRData::URL(url) => format_url(url),
-            QRData::Text(text) => text.clone(),
+            QRData::Text(text) => std::borrow::Cow::Borrowed(text.as_str()),
             QRData::Contact(contact) => {
                 contact.validate()?;
-                generate_vcard(contact)
+                std::borrow::Cow::Owned(generate_vcard(contact))
             }
             QRData::Wifi(wifi) => {
                 wifi.validate()?;
-                generate_wifi(wifi)
+                std::borrow::Cow::Owned(generate_wifi(wifi))
             }
             QRData::Location(location) => {
                 location.validate()?;
-                generate_geo_uri(location)
+                std::borrow::Cow::Owned(generate_geo_uri(location))
             }
         };
 
-        QrCode::with_error_correction_level(&content, self.error_correction)
+        QrCode::with_error_correction_level(content.as_bytes(), self.error_correction)
             .map_err(QRError::QrGenerationError)
     }
 
@@ -168,13 +168,14 @@ impl QRGenerator {
     pub fn to_png(&self, size: u32, logo: Option<&DynamicImage>) -> Result<Vec<u8>, QRError> {
         let image = self.to_image(size, logo)?;
 
-        let mut bytes: Vec<u8> = Vec::new();
-        let mut cursor = Cursor::new(&mut bytes);
+        let mut cursor = Cursor::new(Vec::with_capacity(
+            (image.width() as usize * image.height() as usize) / 10,
+        ));
         image
             .write_to(&mut cursor, ImageFormat::Png)
             .map_err(QRError::ImageError)?;
 
-        Ok(bytes)
+        Ok(cursor.into_inner())
     }
 
     pub fn to_svg(&self) -> Result<String, QRError> {
