@@ -1,12 +1,15 @@
 use base64::{engine::general_purpose, Engine as _};
 use qr_rs::utils::parse_hex_color;
-use qr_rs::{ContactData, QRBuilder, QRData};
+use qr_rs::{QRBuilder, QRData};
 use wasm_bindgen::prelude::*;
-use web_sys::{HtmlInputElement, HtmlTextAreaElement};
+use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
+mod components;
+use components::*;
+
 #[derive(PartialEq, Clone, Copy, Debug)]
-enum Mode {
+pub enum Mode {
     Url,
     Text,
     Contact,
@@ -15,39 +18,31 @@ enum Mode {
 #[function_component(QRWeb)]
 pub fn qr_web() -> Html {
     let mode = use_state(|| Mode::Url);
-    let url_input = use_state(String::new);
-    let text_input = use_state(String::new);
-    let contact = use_state(ContactData::default);
+    let url_input = use_state(|| AttrValue::from(""));
+    let text_input = use_state(|| AttrValue::from(""));
+    let contact = use_state(ContactState::default);
 
     // Customization state
-    let ec_level = use_state(|| "H".to_string());
-    let fg_color = use_state(|| "#000000".to_string());
-    let bg_color = use_state(|| "#FFFFFF".to_string());
+    let ec_level = use_state(|| AttrValue::from("H"));
+    let fg_color = use_state(|| AttrValue::from("#000000"));
+    let bg_color = use_state(|| AttrValue::from("#FFFFFF"));
 
     let qr_data_url = {
         let mode_val = *mode;
-        let url_val = url_input.clone();
-        let text_val = text_input.clone();
-        let contact_val = contact.clone();
-        let ec_val = ec_level.clone();
-        let fg_val = fg_color.clone();
-        let bg_val = bg_color.clone();
+        let url_val = (*url_input).clone();
+        let text_val = (*text_input).clone();
+        let contact_val = (*contact).clone();
+        let ec_val = (*ec_level).clone();
+        let fg_val = (*fg_color).clone();
+        let bg_val = (*bg_color).clone();
 
         use_memo(
-            (
-                mode_val,
-                url_val,
-                text_val,
-                contact_val,
-                ec_val,
-                fg_val,
-                bg_val,
-            ),
-            |(mode, url, text, contact, ec, fg, bg)| {
+            (mode_val, url_val, text_val, contact_val, ec_val, fg_val, bg_val),
+            |(m, u, t, c, ec, fg, bg)| {
                 let mut builder = QRBuilder::new();
 
                 // Apply EC level
-                let level = match (*ec).as_str() {
+                let level = match ec.as_str() {
                     "L" => qr_rs::qrcode::EcLevel::L,
                     "M" => qr_rs::qrcode::EcLevel::M,
                     "Q" => qr_rs::qrcode::EcLevel::Q,
@@ -56,21 +51,14 @@ pub fn qr_web() -> Html {
                 builder = builder.error_correction(level);
 
                 // Apply colors
-                if let (Some(fg_rgba), Some(bg_rgba)) = (parse_hex_color(fg), parse_hex_color(bg)) {
+                if let (Some(fg_rgba), Some(bg_rgba)) = (parse_hex_color(fg.as_str()), parse_hex_color(bg.as_str())) {
                     builder = builder.colors(fg_rgba, bg_rgba);
                 }
 
-                let data = match mode {
-                    Mode::Url => QRData::URL((*url).to_string()),
-                    Mode::Text => QRData::Text((*text).to_string()),
-                    Mode::Contact => QRData::Contact(ContactData {
-                        first_name: contact.first_name.to_string(),
-                        last_name: contact.last_name.to_string(),
-                        phone: contact.phone.to_string(),
-                        email: contact.email.to_string(),
-                        organization: contact.organization.to_string(),
-                        website: contact.website.to_string(),
-                    }),
+                let data = match m {
+                    Mode::Url => QRData::URL(u.to_string()),
+                    Mode::Text => QRData::Text(t.to_string()),
+                    Mode::Contact => QRData::Contact(c.to_contact_data()),
                 };
 
                 builder = builder.data(data);
@@ -78,7 +66,7 @@ pub fn qr_web() -> Html {
                 if let Ok(generator) = builder.build() {
                     if let Ok(bytes) = generator.to_png(300, None) {
                         let b64 = general_purpose::STANDARD.encode(&bytes);
-                        Some(format!("data:image/png;base64,{}", b64))
+                        Some(AttrValue::from(format!("data:image/png;base64,{}", b64)))
                     } else {
                         None
                     }
@@ -102,6 +90,53 @@ pub fn qr_web() -> Html {
         Callback::from(move |_| mode.set(Mode::Contact))
     };
 
+    let on_url_input = {
+        let url_input = url_input.clone();
+        Callback::from(move |e: InputEvent| {
+            let input: HtmlInputElement = e.target_unchecked_into();
+            url_input.set(AttrValue::from(input.value()));
+        })
+    };
+
+    let on_text_input = {
+        let text_input = text_input.clone();
+        Callback::from(move |e: InputEvent| {
+            let input: web_sys::HtmlTextAreaElement = e.target_unchecked_into();
+            text_input.set(AttrValue::from(input.value()));
+        })
+    };
+
+    let on_contact_update = {
+        let contact = contact.clone();
+        Callback::from(move |c: ContactState| {
+            contact.set(c);
+        })
+    };
+
+    let on_ec_change = {
+        let ec_level = ec_level.clone();
+        Callback::from(move |e: Event| {
+            let input: HtmlInputElement = e.target_unchecked_into();
+            ec_level.set(AttrValue::from(input.value()));
+        })
+    };
+
+    let on_fg_input = {
+        let fg_color = fg_color.clone();
+        Callback::from(move |e: InputEvent| {
+            let input: HtmlInputElement = e.target_unchecked_into();
+            fg_color.set(AttrValue::from(input.value()));
+        })
+    };
+
+    let on_bg_input = {
+        let bg_color = bg_color.clone();
+        Callback::from(move |e: InputEvent| {
+            let input: HtmlInputElement = e.target_unchecked_into();
+            bg_color.set(AttrValue::from(input.value()));
+        })
+    };
+
     html! {
         <div class="app-container">
             <header>
@@ -109,135 +144,34 @@ pub fn qr_web() -> Html {
                 <p>{"Quantum Response Generator"}</p>
             </header>
 
-            <div class="mode-selector">
-                <button onclick={on_mode_url} class={if *mode == Mode::Url { "active" } else { "" }}>{"URL"}</button>
-                <button onclick={on_mode_text} class={if *mode == Mode::Text { "active" } else { "" }}>{"Text"}</button>
-                <button onclick={on_mode_contact} class={if *mode == Mode::Contact { "active" } else { "" }}>{"Contact"}</button>
-            </div>
+            <ModeSelector
+                current_mode={*mode}
+                on_mode_url={on_mode_url}
+                on_mode_text={on_mode_text}
+                on_mode_contact={on_mode_contact}
+            />
 
             <div class="input-area">
                 if *mode == Mode::Url {
-                    <div class="input-group">
-                        <label>{"URL"}</label>
-                        <input type="text" placeholder="Enter URL"
-                            value={(*url_input).clone()}
-                            oninput={
-                                let url_input = url_input.clone();
-                                Callback::from(move |e: InputEvent| {
-                                    let input: HtmlInputElement = e.target_unchecked_into();
-                                    url_input.set(input.value());
-                                })
-                            }
-                        />
-                    </div>
+                    <UrlInput value={(*url_input).clone()} oninput={on_url_input} />
                 } else if *mode == Mode::Text {
-                    <div class="input-group">
-                        <label>{"Text"}</label>
-                        <textarea placeholder="Enter Text"
-                            value={(*text_input).clone()}
-                            oninput={
-                                let text_input = text_input.clone();
-                                Callback::from(move |e: InputEvent| {
-                                    let input: HtmlTextAreaElement = e.target_unchecked_into();
-                                    text_input.set(input.value());
-                                })
-                            }
-                        />
-                    </div>
+                    <TextInput value={(*text_input).clone()} oninput={on_text_input} />
                 } else {
-                    <div class="contact-form">
-                         <div class="input-group">
-                            <label>{"First Name"}</label>
-                            <input type="text" value={contact.first_name.clone()}
-                                oninput={let contact = contact.clone(); Callback::from(move |e: InputEvent| {
-                                    let val = e.target_unchecked_into::<HtmlInputElement>().value();
-                                    let mut c = (*contact).clone(); c.first_name = val; contact.set(c);
-                                })} />
-                         </div>
-                         <div class="input-group">
-                            <label>{"Last Name"}</label>
-                            <input type="text" value={contact.last_name.clone()}
-                                oninput={let contact = contact.clone(); Callback::from(move |e: InputEvent| {
-                                    let val = e.target_unchecked_into::<HtmlInputElement>().value();
-                                    let mut c = (*contact).clone(); c.last_name = val; contact.set(c);
-                                })} />
-                         </div>
-                         <div class="input-group">
-                            <label>{"Email"}</label>
-                            <input type="email" value={contact.email.clone()}
-                                oninput={let contact = contact.clone(); Callback::from(move |e: InputEvent| {
-                                    let val = e.target_unchecked_into::<HtmlInputElement>().value();
-                                    let mut c = (*contact).clone(); c.email = val; contact.set(c);
-                                })} />
-                         </div>
-                         <div class="input-group">
-                            <label>{"Phone"}</label>
-                            <input type="tel" value={contact.phone.clone()}
-                                oninput={let contact = contact.clone(); Callback::from(move |e: InputEvent| {
-                                    let val = e.target_unchecked_into::<HtmlInputElement>().value();
-                                    let mut c = (*contact).clone(); c.phone = val; contact.set(c);
-                                })} />
-                         </div>
-                         <div class="input-group">
-                            <label>{"Organization"}</label>
-                            <input type="text" value={contact.organization.clone()}
-                                oninput={let contact = contact.clone(); Callback::from(move |e: InputEvent| {
-                                    let val = e.target_unchecked_into::<HtmlInputElement>().value();
-                                    let mut c = (*contact).clone(); c.organization = val; contact.set(c);
-                                })} />
-                         </div>
-                         <div class="input-group">
-                            <label>{"Website"}</label>
-                            <input type="url" value={contact.website.clone()}
-                                oninput={let contact = contact.clone(); Callback::from(move |e: InputEvent| {
-                                    let val = e.target_unchecked_into::<HtmlInputElement>().value();
-                                    let mut c = (*contact).clone(); c.website = val; contact.set(c);
-                                })} />
-                         </div>
-                    </div>
+                    <ContactInput contact={(*contact).clone()} on_update={on_contact_update} />
                 }
             </div>
 
-            <div class="customization-area" style="margin-top: 20px; padding: 15px; background: #eee; border-radius: 8px;">
-                <h3>{"Customization"}</h3>
-                <div class="input-group">
-                    <label>{"Error Correction Level"}</label>
-                    <select onchange={let ec_level = ec_level.clone(); Callback::from(move |e: Event| {
-                        let input: HtmlInputElement = e.target_unchecked_into();
-                        ec_level.set(input.value());
-                    })}>
-                        <option value="L" selected={*ec_level == "L"}>{"Low (7%)"}</option>
-                        <option value="M" selected={*ec_level == "M"}>{"Medium (15%)"}</option>
-                        <option value="Q" selected={*ec_level == "Q"}>{"Quartile (25%)"}</option>
-                        <option value="H" selected={*ec_level == "H"}>{"High (30%)"}</option>
-                    </select>
-                </div>
-                <div class="input-group">
-                    <label>{"Foreground Color"}</label>
-                    <input type="color" value={(*fg_color).clone()}
-                        oninput={let fg_color = fg_color.clone(); Callback::from(move |e: InputEvent| {
-                            let input: HtmlInputElement = e.target_unchecked_into();
-                            fg_color.set(input.value());
-                        })}
-                    />
-                </div>
-                 <div class="input-group">
-                    <label>{"Background Color"}</label>
-                    <input type="color" value={(*bg_color).clone()}
-                        oninput={let bg_color = bg_color.clone(); Callback::from(move |e: InputEvent| {
-                            let input: HtmlInputElement = e.target_unchecked_into();
-                            bg_color.set(input.value());
-                        })}
-                    />
-                </div>
-            </div>
+            <CustomizationArea
+                ec_level={(*ec_level).clone()}
+                fg_color={(*fg_color).clone()}
+                bg_color={(*bg_color).clone()}
+                on_ec_change={on_ec_change}
+                on_fg_input={on_fg_input}
+                on_bg_input={on_bg_input}
+            />
 
-            if let Some(data_url) = qr_data_url {
-                <div class="qr-display">
-                    <img src={data_url.clone()} alt="QR Code" style="max-width: 300px; border: 1px solid #ccc;" />
-                    <br/>
-                    <a href={data_url} download="qr.png" class="download-btn">{"Download PNG"}</a>
-                </div>
+            if let Some(data_url) = (*qr_data_url).clone() {
+                <QrDisplay data_url={data_url} />
             }
         </div>
     }
