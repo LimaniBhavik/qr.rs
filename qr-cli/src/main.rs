@@ -288,6 +288,70 @@ fn generate(
     }
 }
 
+fn save_svg(generator: &qr_rs::generator::QRGenerator, path: &PathBuf) {
+    match generator.to_svg() {
+        Ok(svg) => {
+            if let Err(e) = fs::write(path, svg) {
+                eprintln!("{} {}", "Error saving SVG:".red(), e);
+            } else {
+                println!("{} {}", "Saved to".green(), path.display());
+            }
+        }
+        Err(e) => eprintln!("{} {}", "Error generating SVG:".red(), e),
+    }
+}
+
+fn save_png(
+    generator: &qr_rs::generator::QRGenerator,
+    qr: &qr_rs::qrcode::QrCode,
+    path: &PathBuf,
+    logo_path: Option<PathBuf>,
+    scale: Option<u32>,
+    border: Option<u32>,
+) {
+    let logo_img = if let Some(l_path) = logo_path {
+        match ImageReader::open(&l_path)
+            .map_err(|e| e.to_string())
+            .and_then(|r| r.decode().map_err(|e| e.to_string()))
+        {
+            Ok(img) => Some(img),
+            Err(e) => {
+                eprintln!("{} {}", "Warning: Failed to load logo:".yellow(), e);
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    let size = if let Some(s) = scale {
+        let _ = border;
+        let width_modules = qr.width() as u32;
+        (width_modules + 8) * s
+    } else {
+        300
+    };
+
+    match generator.to_png(size, logo_img.as_ref()) {
+        Ok(bytes) => {
+            if let Err(e) = fs::write(path, bytes) {
+                eprintln!("{} {}", "Error saving PNG:".red(), e);
+            } else {
+                println!("{} {}", "Saved to".green(), path.display());
+            }
+        }
+        Err(e) => eprintln!("{} {}", "Error encoding PNG:".red(), e),
+    }
+}
+
+fn print_terminal_qr(qr: &qr_rs::qrcode::QrCode) {
+    let string = qr
+        .render::<qr_rs::qrcode::render::unicode::Dense1x2>()
+        .dark_color(qr_rs::qrcode::render::unicode::Dense1x2::Light)
+        .light_color(qr_rs::qrcode::render::unicode::Dense1x2::Dark)
+        .build();
+    println!("\n{}", string);
+}
 fn prompt_for_output(prompt: &str) -> Result<Option<PathBuf>, String> {
     let output: String = Input::with_theme(&ColorfulTheme::default())
         .with_prompt(prompt)
