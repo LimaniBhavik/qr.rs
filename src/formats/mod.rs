@@ -1,6 +1,7 @@
 use crate::error::QRError;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::sync::OnceLock;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
@@ -135,18 +136,22 @@ pub enum QRData {
     Location(LocationData),
 }
 
-pub fn format_url(url: &str) -> String {
+fn has_http_protocol(url: &str) -> bool {
+    let bytes = url.as_bytes();
+    (bytes.len() >= 7 && bytes[..7].eq_ignore_ascii_case(b"http://"))
+        || (bytes.len() >= 8 && bytes[..8].eq_ignore_ascii_case(b"https://"))
+}
+
+pub fn format_url(url: &str) -> std::borrow::Cow<'_, str> {
     let trimmed = url.trim();
     if trimmed.is_empty() {
-        return String::new();
+        return std::borrow::Cow::Borrowed("");
     }
 
-    if trimmed.to_lowercase().starts_with("http://")
-        || trimmed.to_lowercase().starts_with("https://")
-    {
-        trimmed.to_string()
+    if has_http_protocol(trimmed) {
+        std::borrow::Cow::Borrowed(trimmed)
     } else {
-        format!("https://{}", trimmed)
+        std::borrow::Cow::Owned(format!("https://{}", trimmed))
     }
 }
 
@@ -206,7 +211,13 @@ pub fn generate_vcard(contact: &ContactData) -> String {
 
     if !contact.website.is_empty() {
         vcard.push_str("URL:");
-        escape_vcard_value_to(&format_url(&contact.website), &mut vcard);
+        let trimmed = contact.website.trim();
+        if !trimmed.is_empty() {
+            if !has_http_protocol(trimmed) {
+                vcard.push_str("https\\://");
+            }
+            escape_vcard_value_to(trimmed, &mut vcard);
+        }
         vcard.push('\n');
     }
 
