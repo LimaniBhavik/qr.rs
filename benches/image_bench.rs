@@ -2,16 +2,17 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use qr_rs::formats::QRData;
 use qr_rs::generator::QRGenerator;
 
-fn bench_to_png(c: &mut Criterion) {
-    let generator = QRGenerator::new(QRData::URL("https://example.com/a/very/long/url/to/make/the/qr/code/somewhat/large".to_string()));
+fn bench_to_image(c: &mut Criterion) {
+    let generator = QRGenerator::new(QRData::URL(
+        "https://example.com/very/long/url/for/testing/qr/code/generation".to_string(),
+    ));
 
-    c.bench_function("to_png_300", |b| {
+    c.bench_function("to_image", |b| {
         b.iter(|| {
-            let result = generator.to_png(black_box(300), black_box(None)).unwrap();
-            black_box(result);
-        })
+            let _ = generator.to_image(black_box(500), None).unwrap();
+        });
     });
 }
 
-criterion_group!(benches, bench_to_png);
+criterion_group!(benches, bench_to_image);
 criterion_main!(benches);
