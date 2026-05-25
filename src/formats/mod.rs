@@ -135,23 +135,18 @@ pub enum QRData {
     Location(LocationData),
 }
 
-fn has_http_protocol(url: &str) -> bool {
-    let bytes = url.as_bytes();
-    let is_http = bytes.len() >= 7 && bytes[..7].eq_ignore_ascii_case(b"http://");
-    let is_https = bytes.len() >= 8 && bytes[..8].eq_ignore_ascii_case(b"https://");
-    is_http || is_https
-}
-
-pub fn format_url(url: &str) -> std::borrow::Cow<'_, str> {
+pub fn format_url(url: &str) -> String {
     let trimmed = url.trim();
     if trimmed.is_empty() {
-        return std::borrow::Cow::Borrowed("");
+        return String::new();
     }
 
-    if has_http_protocol(trimmed) {
-        std::borrow::Cow::Borrowed(trimmed)
+    if trimmed.to_lowercase().starts_with("http://")
+        || trimmed.to_lowercase().starts_with("https://")
+    {
+        trimmed.to_string()
     } else {
-        std::borrow::Cow::Owned(format!("https://{}", trimmed))
+        format!("https://{}", trimmed)
     }
 }
 
@@ -211,13 +206,7 @@ pub fn generate_vcard(contact: &ContactData) -> String {
 
     if !contact.website.is_empty() {
         vcard.push_str("URL:");
-        let trimmed = contact.website.trim();
-        if !trimmed.is_empty() {
-            if !has_http_protocol(trimmed) {
-                vcard.push_str("https\\://");
-            }
-            escape_vcard_value_to(trimmed, &mut vcard);
-        }
+        escape_vcard_value_to(&format_url(&contact.website), &mut vcard);
         vcard.push('\n');
     }
 
@@ -225,17 +214,12 @@ pub fn generate_vcard(contact: &ContactData) -> String {
     vcard
 }
 
-fn escape_wifi_string_to(s: &str, out: &mut String) {
-    for c in s.chars() {
-        match c {
-            '\\' => out.push_str("\\\\"),
-            ';' => out.push_str("\\;"),
-            ',' => out.push_str("\\,"),
-            ':' => out.push_str("\\:"),
-            '"' => out.push_str("\\\""),
-            _ => out.push(c),
-        }
-    }
+fn escape_wifi_string(s: &str) -> String {
+    s.replace('\\', "\\\\")
+        .replace(';', "\\;")
+        .replace(',', "\\,")
+        .replace(':', "\\:")
+        .replace('"', "\\\"")
 }
 
 pub fn generate_wifi(wifi: &WifiData) -> String {
@@ -244,20 +228,14 @@ pub fn generate_wifi(wifi: &WifiData) -> String {
         WifiEncryption::WEP => "WEP",
         WifiEncryption::Nopass => "nopass",
     };
-
-    // Pre-allocate assuming mostly simple ascii and minimal escaping needed
-    let mut result = String::with_capacity(32 + wifi.ssid.len() + wifi.password.len());
-    result.push_str("WIFI:T:");
-    result.push_str(encryption);
-    result.push_str(";S:");
-    escape_wifi_string_to(&wifi.ssid, &mut result);
-    result.push_str(";P:");
-    escape_wifi_string_to(&wifi.password, &mut result);
-    result.push_str(";H:");
-    result.push_str(if wifi.hidden { "true" } else { "false" });
-    result.push_str(";;");
-
-    result
+    let hidden = if wifi.hidden { "true" } else { "false" };
+    format!(
+        "WIFI:T:{};S:{};P:{};H:{};;",
+        encryption,
+        escape_wifi_string(&wifi.ssid),
+        escape_wifi_string(&wifi.password),
+        hidden
+    )
 }
 
 pub fn generate_geo_uri(location: &LocationData) -> String {
