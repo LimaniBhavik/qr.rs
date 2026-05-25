@@ -100,22 +100,22 @@ impl QRGenerator {
 
         let content = match &self.data {
             QRData::URL(url) => format_url(url),
-            QRData::Text(text) => std::borrow::Cow::Borrowed(text.as_str()),
+            QRData::Text(text) => text.clone(),
             QRData::Contact(contact) => {
                 contact.validate()?;
-                std::borrow::Cow::Owned(generate_vcard(contact))
+                generate_vcard(contact)
             }
             QRData::Wifi(wifi) => {
                 wifi.validate()?;
-                std::borrow::Cow::Owned(generate_wifi(wifi))
+                generate_wifi(wifi)
             }
             QRData::Location(location) => {
                 location.validate()?;
-                std::borrow::Cow::Owned(generate_geo_uri(location))
+                generate_geo_uri(location)
             }
         };
 
-        QrCode::with_error_correction_level(content.as_bytes(), self.error_correction)
+        QrCode::with_error_correction_level(&content, self.error_correction)
             .map_err(QRError::QrGenerationError)
     }
 
@@ -130,19 +130,15 @@ impl QRGenerator {
         let width = qr_image.width();
         let height = qr_image.height();
 
-        let raw_vec: Vec<u8> = qr_image
-            .pixels()
-            .flat_map(|pixel| {
-                if pixel.0[0] == 0 {
-                    self.foreground_color.0
-                } else {
-                    self.background_color.0
-                }
-            })
-            .collect();
+        let mut image = RgbaImage::new(width, height);
 
-        let mut image = RgbaImage::from_raw(width, height, raw_vec)
-            .ok_or_else(|| QRError::GenerationError("Dimension mismatch for image".to_string()))?;
+        for (target_pixel, pixel) in image.pixels_mut().zip(qr_image.pixels()) {
+            *target_pixel = if pixel.0[0] == 0 {
+                self.foreground_color
+            } else {
+                self.background_color
+            };
+        }
 
         if let Some(logo_img) = logo {
             info!("Adding logo to QR code");
@@ -168,14 +164,13 @@ impl QRGenerator {
     pub fn to_png(&self, size: u32, logo: Option<&DynamicImage>) -> Result<Vec<u8>, QRError> {
         let image = self.to_image(size, logo)?;
 
-        // Pre-allocate capacity to reduce reallocations during PNG compression
-        let capacity = (image.width() * image.height() / 10) as usize;
-        let mut cursor = Cursor::new(Vec::with_capacity(capacity));
+        let mut bytes: Vec<u8> = Vec::new();
+        let mut cursor = Cursor::new(&mut bytes);
         image
             .write_to(&mut cursor, ImageFormat::Png)
             .map_err(QRError::ImageError)?;
 
-        Ok(cursor.into_inner())
+        Ok(bytes)
     }
 
     pub fn to_svg(&self) -> Result<String, QRError> {

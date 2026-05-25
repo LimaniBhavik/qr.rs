@@ -3,6 +3,16 @@ pub const MIN_QR_SIZE: u32 = 100;
 pub const MAX_QR_SIZE: u32 = 2000;
 pub const DEFAULT_QUIET_ZONE: u32 = 4;
 
+#[inline(always)]
+fn hex_val(c: u8) -> Option<u8> {
+    match c {
+        b'0'..=b'9' => Some(c - b'0'),
+        b'a'..=b'f' => Some(c - b'a' + 10),
+        b'A'..=b'F' => Some(c - b'A' + 10),
+        _ => None,
+    }
+}
+
 pub fn parse_hex_color(hex: &str) -> Option<[u8; 4]> {
     let hex = hex.trim_start_matches('#');
     if hex.len() != 6 && hex.len() != 8 {
@@ -10,9 +20,11 @@ pub fn parse_hex_color(hex: &str) -> Option<[u8; 4]> {
     }
 
     let mut rgba = [0, 0, 0, 255];
-    for (i, chunk) in hex.as_bytes().chunks(2).enumerate() {
-        let chunk_str = std::str::from_utf8(chunk).ok()?;
-        rgba[i] = u8::from_str_radix(chunk_str, 16).ok()?;
+    let bytes = hex.as_bytes();
+    for (i, chunk) in bytes.chunks(2).enumerate() {
+        let high = hex_val(chunk[0])?;
+        let low = hex_val(chunk[1])?;
+        rgba[i] = (high << 4) | low;
     }
     Some(rgba)
 }
