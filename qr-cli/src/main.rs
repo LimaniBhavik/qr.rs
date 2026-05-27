@@ -310,7 +310,7 @@ fn save_png(
 
     let mut loaded_logo = None;
     if let Some(l_path) = logo_path {
-        match image::ImageReader::open(&l_path).and_then(|r| r.decode().map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))) {
+        match image::ImageReader::open(&l_path).and_then(|r| r.decode().map_err(std::io::Error::other)) {
             Ok(img) => loaded_logo = Some(img),
             Err(e) => eprintln!("{} {}", "Warning: Failed to load logo image:".yellow(), e),
         }

@@ -12,6 +12,7 @@ categories = ["multimedia::images", "encoding"]
 
 [workspace]
 members = [
+  "qr-web",
   "qr-cli",
 ]
 resolver = "2"
