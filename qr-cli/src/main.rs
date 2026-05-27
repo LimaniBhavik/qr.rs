@@ -309,9 +309,7 @@ fn save_png(
 
     let mut loaded_logo = None;
     if let Some(l_path) = logo_path {
-        match image::ImageReader::open(&l_path)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
-        {
+        match image::ImageReader::open(&l_path).map_err(std::io::Error::other) {
             Ok(mut reader) => {
                 let mut limits = image::Limits::default();
                 limits.max_image_width = Some(1024);
