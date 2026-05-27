@@ -229,7 +229,7 @@ mod tests {
     fn test_generate_wifi() {
         let wifi = crate::formats::WifiData {
             ssid: "TestNet".to_string(),
-            password: "pass".to_string(),
+            password: "password123".to_string(),
             ..Default::default()
         };
         let generator = QRGenerator::new(QRData::Wifi(wifi));
