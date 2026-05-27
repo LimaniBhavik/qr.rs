@@ -14,18 +14,21 @@ fn test_logo_limits() {
 
     // Create a dummy file that is NOT a valid image.
     // The decoder will fail. Our strict limits or corrupted file should trigger the error path
-    // but continue generating the QR code anyway and warn (from prior logic).
     fs::write(dummy_logo, "not an image").unwrap();
 
     let mut cmd = Command::cargo_bin("qr-cli").unwrap();
-    cmd.arg("url")
+    let assert = cmd
+        .arg("url")
         .arg("https://example.com")
         .arg("--logo")
         .arg(dummy_logo)
         .arg("--output")
         .arg(output_file)
-        .assert()
-        .success(); // The CLI exits with zero when logo fails to load (graceful degradation)
+        .assert();
+
+    // Wait, the main.rs prints a warning and proceeds.
+    assert.success();
+    // And actually it continues to create the output file without the logo.
 
     // Check that output file WAS created.
     assert!(
