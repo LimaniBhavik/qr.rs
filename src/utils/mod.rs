@@ -57,7 +57,6 @@ mod tests {
         assert_eq!(parse_hex_color("000000"), Some([0, 0, 0, 255]));
         assert_eq!(parse_hex_color("000000FF"), Some([0, 0, 0, 255]));
         assert_eq!(parse_hex_color("aBcDeF"), Some([171, 205, 239, 255]));
-
     }
 
     #[test]

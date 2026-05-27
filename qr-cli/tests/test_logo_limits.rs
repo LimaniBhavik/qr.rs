@@ -28,7 +28,10 @@ fn test_logo_limits() {
         .failure(); // The CLI should exit with a non-zero status code when logo fails to load.
 
     // Check that output file was not created.
-    assert!(!Path::new(output_file).exists(), "Output file should not be created if logo loading fails");
+    assert!(
+        !Path::new(output_file).exists(),
+        "Output file should not be created if logo loading fails"
+    );
 
     fs::remove_file(dummy_logo).unwrap();
     if Path::new(output_file).exists() {

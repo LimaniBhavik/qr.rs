@@ -286,7 +286,6 @@ fn generate(
     }
 }
 
-
 fn save_svg(generator: &qr_rs::generator::QRGenerator, path: &PathBuf) {
     match generator.to_svg() {
         Ok(svg) => {
@@ -310,7 +309,9 @@ fn save_png(
 
     let mut loaded_logo = None;
     if let Some(l_path) = logo_path {
-        match image::ImageReader::open(&l_path).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e)) {
+        match image::ImageReader::open(&l_path)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
+        {
             Ok(mut reader) => {
                 let mut limits = image::Limits::default();
                 limits.max_image_width = Some(1024);
@@ -352,7 +353,6 @@ fn print_terminal_qr(qr: &qr_rs::qrcode::QrCode) {
 }
 
 fn prompt_for_output(prompt: &str) -> Result<Option<PathBuf>, String> {
-
     let output: String = Input::with_theme(&ColorfulTheme::default())
         .with_prompt(prompt)
         .allow_empty(true)
