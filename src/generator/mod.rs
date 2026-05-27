@@ -305,6 +305,59 @@ mod tests {
     }
 
     #[test]
+    fn test_to_svg_basic() {
+        let generator = QRGenerator::new(QRData::Text("Test SVG".to_string()));
+        let result = generator.to_svg();
+        assert!(result.is_ok());
+        let svg_string = result.unwrap();
+        assert!(!svg_string.is_empty(), "SVG string should not be empty");
+        assert!(
+            svg_string.contains("<svg"),
+            "SVG output should contain <svg tag"
+        );
+        assert!(
+            svg_string.contains("</svg>"),
+            "SVG output should contain </svg> tag"
+        );
+    }
+
+    #[test]
+    fn test_to_svg_error() {
+        let generator = QRBuilder::new()
+            .wifi(crate::formats::WifiData {
+                ssid: "".to_string(), // Invalid: empty SSID
+                ..Default::default()
+            })
+            .build()
+            .expect("Builder should build with data");
+
+        let result = generator.to_svg();
+        assert!(result.is_err());
+        match result {
+            Err(QRError::InvalidData(msg)) => assert_eq!(msg, "SSID cannot be empty"),
+            _ => panic!("Expected QRError::InvalidData for empty SSID"),
+        }
+    }
+
+    #[test]
+    fn test_to_png_error() {
+        let generator = QRBuilder::new()
+            .wifi(crate::formats::WifiData {
+                ssid: "".to_string(), // Invalid: empty SSID
+                ..Default::default()
+            })
+            .build()
+            .expect("Builder should build with data");
+
+        let result = generator.to_png(200, None);
+        assert!(result.is_err());
+        match result {
+            Err(QRError::InvalidData(msg)) => assert_eq!(msg, "SSID cannot be empty"),
+            _ => panic!("Expected QRError::InvalidData for empty SSID"),
+        }
+    }
+
+    #[test]
     fn test_to_png_with_logo() {
         let generator = QRGenerator::new(QRData::Text("Test PNG with Logo".to_string()));
 
