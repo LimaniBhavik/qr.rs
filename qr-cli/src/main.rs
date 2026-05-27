@@ -32,14 +32,15 @@ fn validate_output_path(path: &Path) -> Result<(), std::io::Error> {
     Ok(())
 }
 
-fn secure_write(path: &Path, contents: impl AsRef<[u8]>, force: bool) -> Result<(), std::io::Error> {
+fn secure_write(
+    path: &Path,
+    contents: impl AsRef<[u8]>,
+    force: bool,
+) -> Result<(), std::io::Error> {
     validate_output_path(path)?;
 
     let write_file = || -> Result<(), std::io::Error> {
-        let mut file = OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(path)?;
+        let mut file = OpenOptions::new().write(true).create_new(true).open(path)?;
         file.write_all(contents.as_ref())?;
         Ok(())
     };
