@@ -164,8 +164,8 @@ fn escape_vcard_value_to(s: &str, out: &mut String) {
             ':' => out.push_str("\\:"),
             '\n' => out.push_str("\\n"),
             '\r' => out.push_str("\\r"),
-            _ if c.is_control() => {},
-            '\u{2028}' | '\u{2029}' | '\u{0085}' => {},
+            _ if c.is_control() => {}
+            '\u{2028}' | '\u{2029}' | '\u{0085}' => {}
             _ => out.push(c),
         }
     }
@@ -323,7 +323,8 @@ mod tests {
     fn test_vcard_control_char_injection() {
         // Attempt to inject a new field using control characters and unicode line separators
         let contact = ContactData {
-            organization: "Evil\x0bCorp\u{2028}URL:http://malicious.com\u{0085}TEL:+12345".to_string(),
+            organization: "Evil\x0bCorp\u{2028}URL:http://malicious.com\u{0085}TEL:+12345"
+                .to_string(),
             ..ContactData::default()
         };
 
