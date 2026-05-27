@@ -305,6 +305,34 @@ mod tests {
     }
 
     #[test]
+    fn test_to_svg_basic() {
+        let generator = QRGenerator::new(QRData::Text("Test SVG".to_string()));
+        let result = generator.to_svg();
+        assert!(result.is_ok());
+        let svg_string = result.unwrap();
+        assert!(
+            svg_string.contains("<svg"),
+            "SVG output should contain <svg tag"
+        );
+        assert!(
+            svg_string.contains("</svg>"),
+            "SVG output should contain closing </svg> tag"
+        );
+    }
+
+    #[test]
+    fn test_to_svg_contains_xml_declaration() {
+        let generator = QRGenerator::new(QRData::Text("Test XML Decl".to_string()));
+        let result = generator.to_svg();
+        assert!(result.is_ok());
+        let svg_string = result.unwrap();
+        assert!(
+            svg_string.starts_with("<?xml"),
+            "SVG output should start with XML declaration"
+        );
+    }
+
+    #[test]
     fn test_to_png_with_logo() {
         let generator = QRGenerator::new(QRData::Text("Test PNG with Logo".to_string()));
 
