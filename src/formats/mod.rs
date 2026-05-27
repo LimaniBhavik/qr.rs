@@ -164,6 +164,8 @@ fn escape_vcard_value_to(s: &str, out: &mut String) {
             ':' => out.push_str("\\:"),
             '\n' => out.push_str("\\n"),
             '\r' => out.push_str("\\r"),
+            _ if c.is_control() => {},
+            '\u{2028}' | '\u{2029}' | '\u{0085}' => {},
             _ => out.push(c),
         }
     }
@@ -315,6 +317,22 @@ mod tests {
         assert!(!vcard.contains("\nURL:"));
         assert!(!vcard.contains("\nTEL:"));
         assert!(!vcard.contains("\r\nTEL:"));
+    }
+
+    #[test]
+    fn test_vcard_control_char_injection() {
+        // Attempt to inject a new field using control characters and unicode line separators
+        let contact = ContactData {
+            organization: "Evil\x0bCorp\u{2028}URL:http://malicious.com\u{0085}TEL:+12345".to_string(),
+            ..ContactData::default()
+        };
+
+        let vcard = generate_vcard(&contact);
+        // Control characters and line separators should be stripped out
+        assert!(vcard.contains("ORG:EvilCorpURL\\:http\\://malicious.comTEL\\:+12345"));
+        assert!(!vcard.contains("\x0b"));
+        assert!(!vcard.contains("\u{2028}"));
+        assert!(!vcard.contains("\u{0085}"));
     }
 
     #[test]
