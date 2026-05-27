@@ -252,7 +252,7 @@ fn generate(
     pb.set_style(
         ProgressStyle::default_spinner()
             .template("{spinner:.green} {msg}")
-            .unwrap_or_else(|_| ProgressStyle::default_spinner()),
+            .expect("Invalid progress bar template"),
     );
     pb.set_message("Generating QR Code...");
     pb.enable_steady_tick(Duration::from_millis(100));
@@ -286,7 +286,6 @@ fn generate(
     }
 }
 
-
 fn save_svg(generator: &qr_rs::generator::QRGenerator, path: &PathBuf) {
     match generator.to_svg() {
         Ok(svg) => {
@@ -310,7 +309,10 @@ fn save_png(
 
     let mut loaded_logo = None;
     if let Some(l_path) = logo_path {
-        match image::ImageReader::open(&l_path).and_then(|r| r.decode().map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))) {
+        match image::ImageReader::open(&l_path).and_then(|r| {
+            r.decode()
+                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
+        }) {
             Ok(img) => loaded_logo = Some(img),
             Err(e) => eprintln!("{} {}", "Warning: Failed to load logo image:".yellow(), e),
         }
@@ -335,7 +337,6 @@ fn print_terminal_qr(qr: &qr_rs::qrcode::QrCode) {
 }
 
 fn prompt_for_output(prompt: &str) -> Result<Option<PathBuf>, String> {
-
     let output: String = Input::with_theme(&ColorfulTheme::default())
         .with_prompt(prompt)
         .allow_empty(true)
