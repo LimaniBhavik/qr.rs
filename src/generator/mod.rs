@@ -310,8 +310,14 @@ mod tests {
         let result = generator.to_svg();
         assert!(result.is_ok());
         let svg_string = result.unwrap();
-        assert!(svg_string.contains("<svg"), "SVG output should contain <svg tag");
-        assert!(svg_string.contains("</svg>"), "SVG output should contain closing </svg> tag");
+        assert!(
+            svg_string.contains("<svg"),
+            "SVG output should contain <svg tag"
+        );
+        assert!(
+            svg_string.contains("</svg>"),
+            "SVG output should contain closing </svg> tag"
+        );
     }
 
     #[test]
@@ -320,7 +326,10 @@ mod tests {
         let result = generator.to_svg();
         assert!(result.is_ok());
         let svg_string = result.unwrap();
-        assert!(svg_string.starts_with("<?xml"), "SVG output should start with XML declaration");
+        assert!(
+            svg_string.starts_with("<?xml"),
+            "SVG output should start with XML declaration"
+        );
     }
 
     #[test]
