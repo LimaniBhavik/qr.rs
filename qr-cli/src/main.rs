@@ -252,7 +252,7 @@ fn generate(
     pb.set_style(
         ProgressStyle::default_spinner()
             .template("{spinner:.green} {msg}")
-            .unwrap_or_else(|_| ProgressStyle::default_spinner()),
+            .expect("Invalid progress bar template"),
     );
     pb.set_message("Generating QR Code...");
     pb.enable_steady_tick(Duration::from_millis(100));
