@@ -293,8 +293,15 @@ mod tests {
 
         // PNG magic number: 137 80 78 71 13 10 26 10
         let png_magic_number: [u8; 8] = [137, 80, 78, 71, 13, 10, 26, 10];
-        assert!(png_bytes.len() >= 8, "PNG output too small to contain magic number");
-        assert_eq!(&png_bytes[0..8], &png_magic_number, "Output does not have valid PNG magic number");
+        assert!(
+            png_bytes.len() >= 8,
+            "PNG output too small to contain magic number"
+        );
+        assert_eq!(
+            &png_bytes[0..8],
+            &png_magic_number,
+            "Output does not have valid PNG magic number"
+        );
     }
 
     #[test]
@@ -308,11 +315,21 @@ mod tests {
         let result = generator.to_png(200, Some(&dynamic_logo));
         assert!(result.is_ok());
         let png_bytes = result.unwrap();
-        assert!(!png_bytes.is_empty(), "PNG bytes with logo should not be empty");
+        assert!(
+            !png_bytes.is_empty(),
+            "PNG bytes with logo should not be empty"
+        );
 
         // PNG magic number: 137 80 78 71 13 10 26 10
         let png_magic_number: [u8; 8] = [137, 80, 78, 71, 13, 10, 26, 10];
-        assert!(png_bytes.len() >= 8, "PNG output too small to contain magic number");
-        assert_eq!(&png_bytes[0..8], &png_magic_number, "Output does not have valid PNG magic number");
+        assert!(
+            png_bytes.len() >= 8,
+            "PNG output too small to contain magic number"
+        );
+        assert_eq!(
+            &png_bytes[0..8],
+            &png_magic_number,
+            "Output does not have valid PNG magic number"
+        );
     }
 }
