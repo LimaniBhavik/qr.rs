@@ -1958,7 +1958,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "qr-web"
+name = "qr_web"
 version = "0.4.1"
 dependencies = [
  "base64",

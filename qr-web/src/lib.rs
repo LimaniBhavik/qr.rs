@@ -1,4 +1,7 @@
+#![allow(dead_code)]
 use base64::{engine::general_purpose, Engine as _};
+use gloo::timers::callback::Timeout;
+use qr_rs::formats::ContactData;
 use qr_rs::utils::parse_hex_color;
 use qr_rs::{ContactData, QRBuilder, QRData};
 use wasm_bindgen::prelude::*;
@@ -16,7 +19,7 @@ pub enum Mode {
 }
 
 #[derive(PartialEq, Clone, Default)]
-struct ContactState {
+pub struct ContactState {
     first_name: AttrValue,
     last_name: AttrValue,
     phone: AttrValue,
@@ -50,66 +53,74 @@ pub fn qr_web() -> Html {
     let fg_color = use_state(|| AttrValue::from("#000000"));
     let bg_color = use_state(|| AttrValue::from("#FFFFFF"));
 
-    let qr_data_url = {
+    let qr_data_url = use_state(|| None::<AttrValue>);
+
+    {
         let mode_val = *mode;
-        let url_val = url_input.clone();
-        let text_val = text_input.clone();
-        let contact_val = contact.clone();
-        let ec_val = ec_level.clone();
-        let fg_val = fg_color.clone();
-        let bg_val = bg_color.clone();
+        let url_val = (*url_input).clone();
+        let text_val = (*text_input).clone();
+        let contact_val = (*contact).clone();
+        let ec_val = (*ec_level).clone();
+        let fg_val = (*fg_color).clone();
+        let bg_val = (*bg_color).clone();
+        let qr_data_url = qr_data_url.clone();
 
-        use_memo(
-            (
-                mode_val,
-                url_val,
-                text_val,
-                contact_val,
-                ec_val,
-                fg_val,
-                bg_val,
-            ),
-            |(m, u, t, c, ec, fg, bg)| {
-                let mut builder = QRBuilder::new();
+        use_effect_with(
+            (mode_val, url_val, text_val, contact_val, ec_val, fg_val, bg_val),
+            move |(m, u, t, c, ec, fg, bg)| {
+                let m = *m;
+                let u = u.clone();
+                let t = t.clone();
+                let c = c.clone();
+                let ec = ec.clone();
+                let fg = fg.clone();
+                let bg = bg.clone();
 
-                // Apply EC level
-                let level = match (**ec).as_str() {
-                    "L" => qr_rs::qrcode::EcLevel::L,
-                    "M" => qr_rs::qrcode::EcLevel::M,
-                    "Q" => qr_rs::qrcode::EcLevel::Q,
-                    _ => qr_rs::qrcode::EcLevel::H,
-                };
-                builder = builder.error_correction(level);
+                // Set up a 300ms debounce timeout
+                let timeout = Timeout::new(300, move || {
+                    let mut builder = QRBuilder::new();
 
-                // Apply colors
-                if let (Some(fg_rgba), Some(bg_rgba)) = (
-                    parse_hex_color((**fg).as_str()),
-                    parse_hex_color((**bg).as_str()),
-                ) {
-                    builder = builder.colors(fg_rgba, bg_rgba);
-                }
+                    // Apply EC level
+                    let level = match ec.as_str() {
+                        "L" => qr_rs::qrcode::EcLevel::L,
+                        "M" => qr_rs::qrcode::EcLevel::M,
+                        "Q" => qr_rs::qrcode::EcLevel::Q,
+                        _ => qr_rs::qrcode::EcLevel::H,
+                    };
+                    builder = builder.error_correction(level);
 
-                let data = match m {
-                    Mode::Url => QRData::URL((**u).to_string()),
-                    Mode::Text => QRData::Text((**t).to_string()),
-                    Mode::Contact => QRData::Contact(ContactData::from((**c).clone())),
-                };
-
-                builder = builder.data(data);
-
-                if let Ok(generator) = builder.build() {
-                    if let Ok(bytes) = generator.to_png(300, None) {
-                        let b64 = general_purpose::STANDARD.encode(&bytes);
-                        Some(AttrValue::from(format!("data:image/png;base64,{}", b64)))
-                    } else {
-                        None
+                    // Apply colors
+                    if let (Some(fg_rgba), Some(bg_rgba)) = (parse_hex_color(fg.as_str()), parse_hex_color(bg.as_str())) {
+                        builder = builder.colors(fg_rgba, bg_rgba);
                     }
-                } else {
-                    None
-                }
+
+                    let data = match m {
+                        Mode::Url => QRData::URL(u.to_string()),
+                        Mode::Text => QRData::Text(t.to_string()),
+                        Mode::Contact => QRData::Contact(ContactData::from(c.clone())),
+                    };
+
+                    builder = builder.data(data);
+
+                    if let Ok(generator) = builder.build() {
+                        if let Ok(bytes) = generator.to_png(300, None) {
+                            let b64 = general_purpose::STANDARD.encode(&bytes);
+                            qr_data_url.set(Some(AttrValue::from(format!("data:image/png;base64,{}", b64))));
+                        } else {
+                            qr_data_url.set(None);
+                        }
+                    } else {
+                        qr_data_url.set(None);
+                    }
+                });
+
+                // The closure returned by use_effect_with is the cleanup function.
+                // It runs before the effect runs again (due to dependencies changing)
+                // and when the component unmounts. Dropping the Timeout cancels it.
+                || drop(timeout)
             },
-        )
-    };
+        );
+    }
 
     let on_mode_url = {
         let mode = mode.clone();
@@ -124,7 +135,7 @@ pub fn qr_web() -> Html {
         Callback::from(move |_| mode.set(Mode::Contact))
     };
 
-    let on_url_input = {
+    let _on_url_input = {
         let url_input = url_input.clone();
         Callback::from(move |e: InputEvent| {
             let input: HtmlInputElement = e.target_unchecked_into();
@@ -132,22 +143,22 @@ pub fn qr_web() -> Html {
         })
     };
 
-    let on_text_input = {
+    let _on_text_input = {
         let text_input = text_input.clone();
         Callback::from(move |e: InputEvent| {
-            let input: web_sys::HtmlTextAreaElement = e.target_unchecked_into();
+            let input: HtmlTextAreaElement = e.target_unchecked_into();
             text_input.set(AttrValue::from(input.value()));
         })
     };
 
-    let on_contact_update = {
+    let _on_contact_update = {
         let contact = contact.clone();
         Callback::from(move |c: ContactState| {
             contact.set(c);
         })
     };
 
-    let on_ec_change = {
+    let _on_ec_change = {
         let ec_level = ec_level.clone();
         Callback::from(move |e: Event| {
             let input: HtmlInputElement = e.target_unchecked_into();
@@ -155,7 +166,7 @@ pub fn qr_web() -> Html {
         })
     };
 
-    let on_fg_input = {
+    let _on_fg_input = {
         let fg_color = fg_color.clone();
         Callback::from(move |e: InputEvent| {
             let input: HtmlInputElement = e.target_unchecked_into();
@@ -163,7 +174,7 @@ pub fn qr_web() -> Html {
         })
     };
 
-    let on_bg_input = {
+    let _on_bg_input = {
         let bg_color = bg_color.clone();
         Callback::from(move |e: InputEvent| {
             let input: HtmlInputElement = e.target_unchecked_into();
