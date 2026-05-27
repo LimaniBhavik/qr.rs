@@ -2,6 +2,7 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use image::{Luma, Rgba, RgbaImage};
 use qr_rs::formats::QRData;
 use qr_rs::generator::QRGenerator;
+use std::iter;
 
 fn bench_to_image(c: &mut Criterion) {
     let generator = QRGenerator::new(QRData::Text("A reasonably long text for QR code benchmarking purposes. This needs to be long enough to generate a somewhat large QR code matrix.".to_string()));
