@@ -13,6 +13,10 @@ fn hex_val(c: u8) -> Option<u8> {
     }
 }
 
+/// Parses a hex color string (e.g., "#FFFFFF", "FF0000FF") into an RGBA byte array.
+///
+/// Uses `strip_prefix` to strictly remove at most one leading '#' character,
+/// ensuring that malformed inputs like "##FFFFFF" are rejected as invalid.
 pub fn parse_hex_color(hex: &str) -> Option<[u8; 4]> {
     let hex = hex.strip_prefix('#').unwrap_or(hex);
     if hex.len() != 6 && hex.len() != 8 {

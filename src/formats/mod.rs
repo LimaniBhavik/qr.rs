@@ -142,9 +142,34 @@ impl ContactData {
 
 impl WifiData {
     pub fn validate(&self) -> Result<(), QRError> {
-        if self.ssid.is_empty() {
+        if self.ssid.trim().is_empty() {
             return Err(QRError::InvalidData("SSID cannot be empty".to_string()));
         }
+        if self.ssid.len() > 32 {
+            return Err(QRError::InvalidData(
+                "SSID cannot be longer than 32 characters".to_string(),
+            ));
+        }
+
+        match self.encryption {
+            WifiEncryption::WPA => {
+                let pw_len = self.password.len();
+                if !(8..=63).contains(&pw_len) {
+                    return Err(QRError::InvalidData(
+                        "WPA password must be between 8 and 63 characters".to_string(),
+                    ));
+                }
+            }
+            WifiEncryption::Nopass => {
+                if !self.password.is_empty() {
+                    return Err(QRError::InvalidData(
+                        "Password must be empty for unencrypted network".to_string(),
+                    ));
+                }
+            }
+            WifiEncryption::WEP => {}
+        }
+
         Ok(())
     }
 }
@@ -623,19 +648,67 @@ mod tests {
         };
         assert!(valid_wifi.validate().is_ok());
 
-        let invalid_wifi = WifiData {
+        let invalid_wifi_empty_ssid = WifiData {
             ssid: "".to_string(),
             password: "password".to_string(),
             encryption: WifiEncryption::WPA,
             hidden: false,
         };
-        let result = invalid_wifi.validate();
+        let result = invalid_wifi_empty_ssid.validate();
         assert!(result.is_err());
         if let Err(QRError::InvalidData(msg)) = result {
             assert_eq!(msg, "SSID cannot be empty");
         } else {
             panic!("Expected InvalidData error");
         }
+
+        let invalid_wifi_whitespace_ssid = WifiData {
+            ssid: "   ".to_string(),
+            password: "password".to_string(),
+            encryption: WifiEncryption::WPA,
+            hidden: false,
+        };
+        assert!(invalid_wifi_whitespace_ssid.validate().is_err());
+
+        let invalid_wifi_long_ssid = WifiData {
+            ssid: "a".repeat(33),
+            password: "password".to_string(),
+            encryption: WifiEncryption::WPA,
+            hidden: false,
+        };
+        assert!(invalid_wifi_long_ssid.validate().is_err());
+
+        let invalid_wifi_wpa_short_pw = WifiData {
+            ssid: "MyNetwork".to_string(),
+            password: "short".to_string(),
+            encryption: WifiEncryption::WPA,
+            hidden: false,
+        };
+        assert!(invalid_wifi_wpa_short_pw.validate().is_err());
+
+        let invalid_wifi_wpa_long_pw = WifiData {
+            ssid: "MyNetwork".to_string(),
+            password: "a".repeat(64),
+            encryption: WifiEncryption::WPA,
+            hidden: false,
+        };
+        assert!(invalid_wifi_wpa_long_pw.validate().is_err());
+
+        let invalid_wifi_nopass_with_pw = WifiData {
+            ssid: "MyNetwork".to_string(),
+            password: "password".to_string(),
+            encryption: WifiEncryption::Nopass,
+            hidden: false,
+        };
+        assert!(invalid_wifi_nopass_with_pw.validate().is_err());
+
+        let valid_wifi_nopass = WifiData {
+            ssid: "MyNetwork".to_string(),
+            password: "".to_string(),
+            encryption: WifiEncryption::Nopass,
+            hidden: false,
+        };
+        assert!(valid_wifi_nopass.validate().is_ok());
     }
 
     #[test]
