@@ -40,6 +40,38 @@ fn bench_to_image(c: &mut Criterion) {
         })
     });
 
+    group.bench_function("from_fn", |b| {
+        b.iter(|| {
+            let fg = Rgba([0u8, 0, 0, 255]);
+            let bg = Rgba([255u8, 255, 255, 255]);
+            let image = RgbaImage::from_fn(width, height, |x, y| {
+                if qr_image.get_pixel(x, y).0[0] == 0 {
+                    fg
+                } else {
+                    bg
+                }
+            });
+            black_box(image)
+        })
+    });
+
+    group.bench_function("chunks_exact_mut", |b| {
+        b.iter(|| {
+            let fg = [0u8, 0, 0, 255];
+            let bg = [255u8, 255, 255, 255];
+            let mut image = RgbaImage::new(width, height);
+
+            image
+                .chunks_exact_mut(4)
+                .zip(qr_image.as_raw().iter())
+                .for_each(|(pixel, &luma)| {
+                    let color = if luma == 0 { &fg } else { &bg };
+                    pixel.copy_from_slice(color);
+                });
+            black_box(image)
+        })
+    });
+
     group.finish();
 }
 

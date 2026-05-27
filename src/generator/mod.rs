@@ -130,19 +130,18 @@ impl QRGenerator {
         let width = qr_image.width();
         let height = qr_image.height();
 
-        let pixels: Vec<u8> = qr_image
-            .pixels()
-            .flat_map(|pixel| {
-                if pixel.0[0] == 0 {
-                    self.foreground_color.0
+        let mut image = RgbaImage::new(width, height);
+        image
+            .chunks_exact_mut(4)
+            .zip(qr_image.as_raw().iter())
+            .for_each(|(pixel, &luma)| {
+                let color = if luma == 0 {
+                    &self.foreground_color.0
                 } else {
-                    self.background_color.0
-                }
-            })
-            .collect();
-
-        let mut image = RgbaImage::from_raw(width, height, pixels)
-            .ok_or_else(|| QRError::GenerationError("Image dimension mismatch".to_string()))?;
+                    &self.background_color.0
+                };
+                pixel.copy_from_slice(color);
+            });
 
         if let Some(logo_img) = logo {
             info!("Adding logo to QR code");
@@ -301,6 +300,34 @@ mod tests {
             &png_bytes[0..8],
             &png_magic_number,
             "Output does not have valid PNG magic number"
+        );
+    }
+
+    #[test]
+    fn test_to_svg_basic() {
+        let generator = QRGenerator::new(QRData::Text("Test SVG".to_string()));
+        let result = generator.to_svg();
+        assert!(result.is_ok());
+        let svg_string = result.unwrap();
+        assert!(
+            svg_string.contains("<svg"),
+            "SVG output should contain <svg tag"
+        );
+        assert!(
+            svg_string.contains("</svg>"),
+            "SVG output should contain closing </svg> tag"
+        );
+    }
+
+    #[test]
+    fn test_to_svg_contains_xml_declaration() {
+        let generator = QRGenerator::new(QRData::Text("Test XML Decl".to_string()));
+        let result = generator.to_svg();
+        assert!(result.is_ok());
+        let svg_string = result.unwrap();
+        assert!(
+            svg_string.starts_with("<?xml"),
+            "SVG output should start with XML declaration"
         );
     }
 
