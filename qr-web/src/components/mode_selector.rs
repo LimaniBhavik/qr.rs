@@ -1,5 +1,5 @@
-use yew::prelude::*;
 use crate::Mode;
+use yew::prelude::*;
 
 #[derive(Properties, PartialEq)]
 pub struct ModeSelectorProps {
