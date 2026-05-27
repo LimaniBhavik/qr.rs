@@ -14,7 +14,6 @@ fn test_logo_limits() {
 
     // Create a dummy file that is NOT a valid image.
     // The decoder will fail. Our strict limits or corrupted file should trigger the error path
-    // and exit before creating output_file.
     fs::write(dummy_logo, "not an image").unwrap();
 
     let mut cmd = Command::cargo_bin("qr-cli").unwrap();
