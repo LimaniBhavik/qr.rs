@@ -309,9 +309,14 @@ fn save_png(
 
     let mut loaded_logo = None;
     if let Some(l_path) = logo_path {
-        match image::ImageReader::open(&l_path)
-            .and_then(|r| r.decode().map_err(std::io::Error::other))
-        {
+        match image::ImageReader::open(&l_path).and_then(|mut r| {
+            let mut limits = image::Limits::default();
+            limits.max_image_width = Some(1024);
+            limits.max_image_height = Some(1024);
+            limits.max_alloc = Some(10 * 1024 * 1024); // 10MB
+            r.limits(limits);
+            r.decode().map_err(std::io::Error::other)
+        }) {
             Ok(img) => loaded_logo = Some(img),
             Err(e) => eprintln!("{} {}", "Warning: Failed to load logo image:".yellow(), e),
         }
