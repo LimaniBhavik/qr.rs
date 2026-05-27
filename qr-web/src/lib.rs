@@ -1,8 +1,8 @@
 use base64::{engine::general_purpose, Engine as _};
 use qr_rs::utils::parse_hex_color;
-use qr_rs::{QRBuilder, QRData};
+use qr_rs::{ContactData, QRBuilder, QRData};
 use wasm_bindgen::prelude::*;
-use web_sys::HtmlInputElement;
+use web_sys::{HtmlInputElement, HtmlTextAreaElement};
 use yew::prelude::*;
 
 mod components;
@@ -52,20 +52,28 @@ pub fn qr_web() -> Html {
 
     let qr_data_url = {
         let mode_val = *mode;
-        let url_val = (*url_input).clone();
-        let text_val = (*text_input).clone();
-        let contact_val = (*contact).clone();
-        let ec_val = (*ec_level).clone();
-        let fg_val = (*fg_color).clone();
-        let bg_val = (*bg_color).clone();
+        let url_val = url_input.clone();
+        let text_val = text_input.clone();
+        let contact_val = contact.clone();
+        let ec_val = ec_level.clone();
+        let fg_val = fg_color.clone();
+        let bg_val = bg_color.clone();
 
         use_memo(
-            (mode_val, url_val, text_val, contact_val, ec_val, fg_val, bg_val),
+            (
+                mode_val,
+                url_val,
+                text_val,
+                contact_val,
+                ec_val,
+                fg_val,
+                bg_val,
+            ),
             |(m, u, t, c, ec, fg, bg)| {
                 let mut builder = QRBuilder::new();
 
                 // Apply EC level
-                let level = match ec.as_str() {
+                let level = match (**ec).as_str() {
                     "L" => qr_rs::qrcode::EcLevel::L,
                     "M" => qr_rs::qrcode::EcLevel::M,
                     "Q" => qr_rs::qrcode::EcLevel::Q,
@@ -74,14 +82,17 @@ pub fn qr_web() -> Html {
                 builder = builder.error_correction(level);
 
                 // Apply colors
-                if let (Some(fg_rgba), Some(bg_rgba)) = (parse_hex_color(fg.as_str()), parse_hex_color(bg.as_str())) {
+                if let (Some(fg_rgba), Some(bg_rgba)) = (
+                    parse_hex_color((**fg).as_str()),
+                    parse_hex_color((**bg).as_str()),
+                ) {
                     builder = builder.colors(fg_rgba, bg_rgba);
                 }
 
-                let data = match mode {
-                    Mode::Url => QRData::URL(url.to_string()),
-                    Mode::Text => QRData::Text(text.to_string()),
-                    Mode::Contact => QRData::Contact(ContactData::from((**contact).clone())),
+                let data = match m {
+                    Mode::Url => QRData::URL((**u).to_string()),
+                    Mode::Text => QRData::Text((**t).to_string()),
+                    Mode::Contact => QRData::Contact(ContactData::from((**c).clone())),
                 };
 
                 builder = builder.data(data);
