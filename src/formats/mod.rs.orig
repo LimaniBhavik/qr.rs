@@ -1,6 +1,7 @@
 use crate::error::QRError;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::sync::OnceLock;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
@@ -37,48 +38,9 @@ pub struct LocationData {
 
 fn is_valid_email(email: &str) -> bool {
     static EMAIL_REGEX: OnceLock<Regex> = OnceLock::new();
-    // Use a simpler regex to prevent ReDoS, followed by strict string validation
-    let is_match = EMAIL_REGEX
-        .get_or_init(|| {
-            Regex::new(r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~.-]+@[a-zA-Z0-9.-]+$")
-                .expect("Invalid email regex pattern")
-        })
-        .is_match(email);
-
-    if !is_match {
-        return false;
-    }
-
-    let parts: Vec<&str> = email.split('@').collect();
-    if parts.len() != 2 {
-        return false;
-    }
-
-    let local = parts[0];
-    let domain = parts[1];
-
-    if local.starts_with('.') || local.ends_with('.') || local.contains("..") {
-        return false;
-    }
-
-    if domain.starts_with('.') || domain.ends_with('.') || domain.contains("..") {
-        return false;
-    }
-
-    if domain.starts_with('-')
-        || domain.ends_with('-')
-        || domain.contains(".-")
-        || domain.contains("-.")
-    {
-        return false;
-    }
-
-    for segment in domain.split('.') {
-        if segment.len() > 63 {
-            return false;
-        }
-    }
-    true
+    EMAIL_REGEX.get_or_init(|| {
+        Regex::new(r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$").expect("Invalid email regex pattern")
+    }).is_match(email)
 }
 
 fn is_valid_phone(phone: &str) -> bool {
