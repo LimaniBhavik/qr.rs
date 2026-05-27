@@ -309,12 +309,26 @@ fn save_png(
 
     let mut loaded_logo = None;
     if let Some(l_path) = logo_path {
-        match image::ImageReader::open(&l_path).and_then(|r| {
-            r.decode()
-                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
-        }) {
-            Ok(img) => loaded_logo = Some(img),
-            Err(e) => eprintln!("{} {}", "Warning: Failed to load logo image:".yellow(), e),
+        match image::ImageReader::open(&l_path).map_err(std::io::Error::other) {
+            Ok(mut reader) => {
+                let mut limits = image::Limits::default();
+                limits.max_image_width = Some(1024);
+                limits.max_image_height = Some(1024);
+                limits.max_alloc = Some(50 * 1024 * 1024);
+                reader.limits(limits);
+
+                match reader.decode() {
+                    Ok(img) => loaded_logo = Some(img),
+                    Err(e) => {
+                        eprintln!("{} {}", "Error: Failed to decode logo image (it may exceed strict size limits or be corrupted):".red(), e);
+                        std::process::exit(1);
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("{} {}", "Error: Failed to open logo image:".red(), e);
+                std::process::exit(1);
+            }
         }
     }
 
