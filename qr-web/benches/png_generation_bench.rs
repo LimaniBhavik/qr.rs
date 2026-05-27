@@ -6,7 +6,8 @@ fn bench_png_generation(c: &mut Criterion) {
 
     group.bench_function("generate_png_300", |b| {
         b.iter(|| {
-            let data = QRData::URL("https://example.com/very/long/url/to/make/qr/complex".to_string());
+            let data =
+                QRData::URL("https://example.com/very/long/url/to/make/qr/complex".to_string());
             let mut builder = QRBuilder::new();
             builder = builder.error_correction(qr_rs::qrcode::EcLevel::H);
             builder = builder.data(data);
