@@ -313,7 +313,10 @@ fn save_png(
             .and_then(|r| r.decode().map_err(std::io::Error::other))
         {
             Ok(img) => loaded_logo = Some(img),
-            Err(e) => eprintln!("{} {}", "Warning: Failed to load logo image:".yellow(), e),
+            Err(e) => {
+                eprintln!("{} {}", "Error: Failed to load logo image:".red(), e);
+                std::process::exit(1);
+            }
         }
     }
 
