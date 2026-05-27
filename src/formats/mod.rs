@@ -37,48 +37,9 @@ pub struct LocationData {
 
 fn is_valid_email(email: &str) -> bool {
     static EMAIL_REGEX: OnceLock<Regex> = OnceLock::new();
-    // Use a simpler regex to prevent ReDoS, followed by strict string validation
-    let is_match = EMAIL_REGEX
-        .get_or_init(|| {
-            Regex::new(r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~.-]+@[a-zA-Z0-9.-]+$")
-                .expect("Invalid email regex pattern")
-        })
-        .is_match(email);
-
-    if !is_match {
-        return false;
-    }
-
-    let parts: Vec<&str> = email.split('@').collect();
-    if parts.len() != 2 {
-        return false;
-    }
-
-    let local = parts[0];
-    let domain = parts[1];
-
-    if local.starts_with('.') || local.ends_with('.') || local.contains("..") {
-        return false;
-    }
-
-    if domain.starts_with('.') || domain.ends_with('.') || domain.contains("..") {
-        return false;
-    }
-
-    if domain.starts_with('-')
-        || domain.ends_with('-')
-        || domain.contains(".-")
-        || domain.contains("-.")
-    {
-        return false;
-    }
-
-    for segment in domain.split('.') {
-        if segment.len() > 63 {
-            return false;
-        }
-    }
-    true
+    EMAIL_REGEX.get_or_init(|| {
+        Regex::new(r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$").expect("Invalid email regex pattern")
+    }).is_match(email)
 }
 
 fn is_valid_phone(phone: &str) -> bool {
@@ -202,8 +163,6 @@ fn escape_vcard_value_to(s: &str, out: &mut String) {
             ':' => out.push_str("\\:"),
             '\n' => out.push_str("\\n"),
             '\r' => out.push_str("\\r"),
-            _ if c.is_control() => {}
-            '\u{2028}' | '\u{2029}' | '\u{0085}' => {}
             _ => out.push(c),
         }
     }
@@ -355,23 +314,6 @@ mod tests {
         assert!(!vcard.contains("\nURL:"));
         assert!(!vcard.contains("\nTEL:"));
         assert!(!vcard.contains("\r\nTEL:"));
-    }
-
-    #[test]
-    fn test_vcard_control_char_injection() {
-        // Attempt to inject a new field using control characters and unicode line separators
-        let contact = ContactData {
-            organization: "Evil\x0bCorp\u{2028}URL:http://malicious.com\u{0085}TEL:+12345"
-                .to_string(),
-            ..ContactData::default()
-        };
-
-        let vcard = generate_vcard(&contact);
-        // Control characters and line separators should be stripped out
-        assert!(vcard.contains("ORG:EvilCorpURL\\:http\\://malicious.comTEL\\:+12345"));
-        assert!(!vcard.contains("\x0b"));
-        assert!(!vcard.contains("\u{2028}"));
-        assert!(!vcard.contains("\u{0085}"));
     }
 
     #[test]

@@ -1,5 +1,5 @@
 [package]
-name = "qr_web"
+name = "qr-web"
 version = "0.4.1"
 edition = "2021"
 
@@ -17,13 +17,5 @@ base64 = "0.21"
 criterion = "0.5.1"
 
 [[bench]]
-name = "png_generation_bench"
-harness = false
-
-[[bench]]
 name = "yew_bench"
 harness = false
-
-[[bin]]
-name = "qr_web"
-path = "src/main.rs"

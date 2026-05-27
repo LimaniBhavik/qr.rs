@@ -309,9 +309,10 @@ fn save_png(
 
     let mut loaded_logo = None;
     if let Some(l_path) = logo_path {
-        match image::ImageReader::open(&l_path)
-            .and_then(|r| r.decode().map_err(std::io::Error::other))
-        {
+        match image::ImageReader::open(&l_path).and_then(|r| {
+            r.decode()
+                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
+        }) {
             Ok(img) => loaded_logo = Some(img),
             Err(e) => eprintln!("{} {}", "Warning: Failed to load logo image:".yellow(), e),
         }
@@ -349,19 +350,15 @@ fn prompt_for_output(prompt: &str) -> Result<Option<PathBuf>, String> {
     }
 }
 
-fn finish_interactive_generation(builder: QRBuilder) -> Result<(), String> {
-    let path = prompt_for_output("Output file (optional, leave empty for terminal)")?;
-    generate(builder, path, None, None, None);
-    Ok(())
-}
-
 fn handle_interactive_url(builder: QRBuilder) -> Result<(), String> {
     let url: String = Input::with_theme(&ColorfulTheme::default())
         .with_prompt("Enter URL")
         .interact_text()
         .map_err(|e| e.to_string())?;
 
-    finish_interactive_generation(builder.url(url))
+    let path = prompt_for_output("Output file (optional, leave empty for terminal)")?;
+    generate(builder.url(url), path, None, None, None);
+    Ok(())
 }
 
 fn handle_interactive_text(builder: QRBuilder) -> Result<(), String> {
@@ -370,7 +367,9 @@ fn handle_interactive_text(builder: QRBuilder) -> Result<(), String> {
         .interact_text()
         .map_err(|e| e.to_string())?;
 
-    finish_interactive_generation(builder.text(text))
+    let path = prompt_for_output("Output file (optional)")?;
+    generate(builder.text(text), path, None, None, None);
+    Ok(())
 }
 
 fn handle_interactive_contact(builder: QRBuilder) -> Result<(), String> {
@@ -414,7 +413,15 @@ fn handle_interactive_contact(builder: QRBuilder) -> Result<(), String> {
         website,
     };
 
-    finish_interactive_generation(builder.data(QRData::Contact(contact)))
+    let path = prompt_for_output("Output file (optional)")?;
+    generate(
+        builder.data(QRData::Contact(contact)),
+        path,
+        None,
+        None,
+        None,
+    );
+    Ok(())
 }
 
 fn run_interactive() -> Result<(), String> {
