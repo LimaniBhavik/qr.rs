@@ -24,16 +24,16 @@ fn test_logo_limits() {
         .arg(dummy_logo)
         .arg("--output")
         .arg(output_file)
-        .assert();
+        .assert()
+        .success(); // The CLI gracefully continues if logo loading fails
 
-    // Wait, the main.rs prints a warning and proceeds.
-    assert.success();
-    // And actually it continues to create the output file without the logo.
+    let output_str = std::str::from_utf8(&assert.get_output().stderr).unwrap();
+    assert!(output_str.contains("Warning: Failed to load logo image"));
 
-    // Check that output file WAS created.
+    // Verify it still generated the QR code despite the logo error
     assert!(
         Path::new(output_file).exists(),
-        "Output file should be created even if logo loading fails"
+        "Output file should be created despite logo loading failure"
     );
 
     fs::remove_file(dummy_logo).unwrap();
