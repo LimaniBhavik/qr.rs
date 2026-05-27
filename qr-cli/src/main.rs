@@ -252,7 +252,7 @@ fn generate(
     pb.set_style(
         ProgressStyle::default_spinner()
             .template("{spinner:.green} {msg}")
-            .unwrap_or_else(|_| ProgressStyle::default_spinner()),
+            .expect("Invalid progress bar template"),
     );
     pb.set_message("Generating QR Code...");
     pb.enable_steady_tick(Duration::from_millis(100));
@@ -350,15 +350,19 @@ fn prompt_for_output(prompt: &str) -> Result<Option<PathBuf>, String> {
     }
 }
 
+fn finish_interactive_generation(builder: QRBuilder) -> Result<(), String> {
+    let path = prompt_for_output("Output file (optional, leave empty for terminal)")?;
+    generate(builder, path, None, None, None);
+    Ok(())
+}
+
 fn handle_interactive_url(builder: QRBuilder) -> Result<(), String> {
     let url: String = Input::with_theme(&ColorfulTheme::default())
         .with_prompt("Enter URL")
         .interact_text()
         .map_err(|e| e.to_string())?;
 
-    let path = prompt_for_output("Output file (optional, leave empty for terminal)")?;
-    generate(builder.url(url), path, None, None, None);
-    Ok(())
+    finish_interactive_generation(builder.url(url))
 }
 
 fn handle_interactive_text(builder: QRBuilder) -> Result<(), String> {
@@ -367,9 +371,7 @@ fn handle_interactive_text(builder: QRBuilder) -> Result<(), String> {
         .interact_text()
         .map_err(|e| e.to_string())?;
 
-    let path = prompt_for_output("Output file (optional)")?;
-    generate(builder.text(text), path, None, None, None);
-    Ok(())
+    finish_interactive_generation(builder.text(text))
 }
 
 fn handle_interactive_contact(builder: QRBuilder) -> Result<(), String> {
@@ -413,15 +415,7 @@ fn handle_interactive_contact(builder: QRBuilder) -> Result<(), String> {
         website,
     };
 
-    let path = prompt_for_output("Output file (optional)")?;
-    generate(
-        builder.data(QRData::Contact(contact)),
-        path,
-        None,
-        None,
-        None,
-    );
-    Ok(())
+    finish_interactive_generation(builder.data(QRData::Contact(contact)))
 }
 
 fn run_interactive() -> Result<(), String> {
