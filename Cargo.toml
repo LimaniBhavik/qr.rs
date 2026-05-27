@@ -37,3 +37,6 @@ path = "src/lib.rs"
 
 
 
+[[bench]]
+name = "image_bench"
+harness = false
