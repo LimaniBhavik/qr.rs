@@ -1,6 +1,6 @@
-use yew::prelude::*;
-use web_sys::HtmlInputElement;
 use qr_rs::ContactData;
+use web_sys::HtmlInputElement;
+use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Debug, Default)]
 pub struct ContactState {
