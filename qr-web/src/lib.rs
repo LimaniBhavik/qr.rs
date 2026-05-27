@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 use base64::{engine::general_purpose, Engine as _};
 use gloo::timers::callback::Timeout;
+use gloo::timers::future::TimeoutFuture;
+use qr_rs::formats::ContactData;
 use qr_rs::utils::parse_hex_color;
 use qr_rs::{QRBuilder, QRData};
 use wasm_bindgen::prelude::*;
@@ -85,45 +87,51 @@ pub fn qr_web() -> Html {
 
                 // Set up a 300ms debounce timeout
                 let timeout = Timeout::new(300, move || {
-                    let mut builder = QRBuilder::new();
+                    wasm_bindgen_futures::spawn_local(async move {
+                        // Yield to the browser's event loop to ensure UI paints
+                        // any newly typed characters before doing the heavy work.
+                        TimeoutFuture::new(0).await;
 
-                    // Apply EC level
-                    let level = match ec.as_str() {
-                        "L" => qr_rs::qrcode::EcLevel::L,
-                        "M" => qr_rs::qrcode::EcLevel::M,
-                        "Q" => qr_rs::qrcode::EcLevel::Q,
-                        _ => qr_rs::qrcode::EcLevel::H,
-                    };
-                    builder = builder.error_correction(level);
+                        let mut builder = QRBuilder::new();
 
-                    // Apply colors
-                    if let (Some(fg_rgba), Some(bg_rgba)) =
-                        (parse_hex_color(fg.as_str()), parse_hex_color(bg.as_str()))
-                    {
-                        builder = builder.colors(fg_rgba, bg_rgba);
-                    }
+                        // Apply EC level
+                        let level = match ec.as_str() {
+                            "L" => qr_rs::qrcode::EcLevel::L,
+                            "M" => qr_rs::qrcode::EcLevel::M,
+                            "Q" => qr_rs::qrcode::EcLevel::Q,
+                            _ => qr_rs::qrcode::EcLevel::H,
+                        };
+                        builder = builder.error_correction(level);
 
-                    let data = match m {
-                        Mode::Url => QRData::URL(u.to_string()),
-                        Mode::Text => QRData::Text(t.to_string()),
-                        Mode::Contact => QRData::Contact(ContactData::from(c.clone())),
-                    };
+                        // Apply colors
+                        if let (Some(fg_rgba), Some(bg_rgba)) =
+                            (parse_hex_color(fg.as_str()), parse_hex_color(bg.as_str()))
+                        {
+                            builder = builder.colors(fg_rgba, bg_rgba);
+                        }
 
-                    builder = builder.data(data);
+                        let data = match m {
+                            Mode::Url => QRData::URL(u.to_string()),
+                            Mode::Text => QRData::Text(t.to_string()),
+                            Mode::Contact => QRData::Contact(ContactData::from(c.clone())),
+                        };
 
-                    if let Ok(generator) = builder.build() {
-                        if let Ok(bytes) = generator.to_png(300, None) {
-                            let b64 = general_purpose::STANDARD.encode(&bytes);
-                            qr_data_url.set(Some(AttrValue::from(format!(
-                                "data:image/png;base64,{}",
-                                b64
-                            ))));
+                        builder = builder.data(data);
+
+                        if let Ok(generator) = builder.build() {
+                            if let Ok(bytes) = generator.to_png(300, None) {
+                                let b64 = general_purpose::STANDARD.encode(&bytes);
+                                qr_data_url.set(Some(AttrValue::from(format!(
+                                    "data:image/png;base64,{}",
+                                    b64
+                                ))));
+                            } else {
+                                qr_data_url.set(None);
+                            }
                         } else {
                             qr_data_url.set(None);
                         }
-                    } else {
-                        qr_data_url.set(None);
-                    }
+                    });
                 });
 
                 // The closure returned by use_effect_with is the cleanup function.
