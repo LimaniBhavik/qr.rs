@@ -3,7 +3,7 @@ use base64::{engine::general_purpose, Engine as _};
 use gloo::timers::callback::Timeout;
 use qr_rs::formats::ContactData;
 use qr_rs::utils::parse_hex_color;
-use qr_rs::{ContactData, QRBuilder, QRData};
+use qr_rs::{QRBuilder, QRData};
 use wasm_bindgen::prelude::*;
 use web_sys::{HtmlInputElement, HtmlTextAreaElement};
 use yew::prelude::*;
