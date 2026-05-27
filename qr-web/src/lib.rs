@@ -66,15 +66,7 @@ pub fn qr_web() -> Html {
         let qr_data_url = qr_data_url.clone();
 
         use_effect_with(
-            (
-                mode_val,
-                url_val,
-                text_val,
-                contact_val,
-                ec_val,
-                fg_val,
-                bg_val,
-            ),
+            (mode_val, url_val, text_val, contact_val, ec_val, fg_val, bg_val),
             move |(m, u, t, c, ec, fg, bg)| {
                 let m = *m;
                 let u = u.clone();
@@ -98,9 +90,7 @@ pub fn qr_web() -> Html {
                     builder = builder.error_correction(level);
 
                     // Apply colors
-                    if let (Some(fg_rgba), Some(bg_rgba)) =
-                        (parse_hex_color(fg.as_str()), parse_hex_color(bg.as_str()))
-                    {
+                    if let (Some(fg_rgba), Some(bg_rgba)) = (parse_hex_color(fg.as_str()), parse_hex_color(bg.as_str())) {
                         builder = builder.colors(fg_rgba, bg_rgba);
                     }
 
@@ -115,10 +105,7 @@ pub fn qr_web() -> Html {
                     if let Ok(generator) = builder.build() {
                         if let Ok(bytes) = generator.to_png(300, None) {
                             let b64 = general_purpose::STANDARD.encode(&bytes);
-                            qr_data_url.set(Some(AttrValue::from(format!(
-                                "data:image/png;base64,{}",
-                                b64
-                            ))));
+                            qr_data_url.set(Some(AttrValue::from(format!("data:image/png;base64,{}", b64))));
                         } else {
                             qr_data_url.set(None);
                         }
