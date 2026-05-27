@@ -3,7 +3,7 @@ use base64::{engine::general_purpose, Engine as _};
 use gloo::timers::callback::Timeout;
 use qr_rs::formats::ContactData;
 use qr_rs::utils::parse_hex_color;
-use qr_rs::{ContactData, QRBuilder, QRData};
+use qr_rs::{QRBuilder, QRData};
 use wasm_bindgen::prelude::*;
 use web_sys::{HtmlInputElement, HtmlTextAreaElement};
 use yew::prelude::*;
@@ -56,25 +56,33 @@ pub fn qr_web() -> Html {
     let qr_data_url = use_state(|| None::<AttrValue>);
 
     {
-        let mode_val = *mode;
-        let url_val = (*url_input).clone();
-        let text_val = (*text_input).clone();
-        let contact_val = (*contact).clone();
-        let ec_val = (*ec_level).clone();
-        let fg_val = (*fg_color).clone();
-        let bg_val = (*bg_color).clone();
+        let mode_val = mode.clone();
+        let url_val = url_input.clone();
+        let text_val = text_input.clone();
+        let contact_val = contact.clone();
+        let ec_val = ec_level.clone();
+        let fg_val = fg_color.clone();
+        let bg_val = bg_color.clone();
         let qr_data_url = qr_data_url.clone();
 
         use_effect_with(
-            (mode_val, url_val, text_val, contact_val, ec_val, fg_val, bg_val),
+            (
+                mode_val,
+                url_val,
+                text_val,
+                contact_val,
+                ec_val,
+                fg_val,
+                bg_val,
+            ),
             move |(m, u, t, c, ec, fg, bg)| {
-                let m = *m;
-                let u = u.clone();
-                let t = t.clone();
-                let c = c.clone();
-                let ec = ec.clone();
-                let fg = fg.clone();
-                let bg = bg.clone();
+                let m = **m;
+                let u = (**u).clone();
+                let t = (**t).clone();
+                let c = (**c).clone();
+                let ec = (**ec).clone();
+                let fg = (**fg).clone();
+                let bg = (**bg).clone();
 
                 // Set up a 300ms debounce timeout
                 let timeout = Timeout::new(300, move || {
@@ -90,7 +98,9 @@ pub fn qr_web() -> Html {
                     builder = builder.error_correction(level);
 
                     // Apply colors
-                    if let (Some(fg_rgba), Some(bg_rgba)) = (parse_hex_color(fg.as_str()), parse_hex_color(bg.as_str())) {
+                    if let (Some(fg_rgba), Some(bg_rgba)) =
+                        (parse_hex_color(fg.as_str()), parse_hex_color(bg.as_str()))
+                    {
                         builder = builder.colors(fg_rgba, bg_rgba);
                     }
 
@@ -105,7 +115,10 @@ pub fn qr_web() -> Html {
                     if let Ok(generator) = builder.build() {
                         if let Ok(bytes) = generator.to_png(300, None) {
                             let b64 = general_purpose::STANDARD.encode(&bytes);
-                            qr_data_url.set(Some(AttrValue::from(format!("data:image/png;base64,{}", b64))));
+                            qr_data_url.set(Some(AttrValue::from(format!(
+                                "data:image/png;base64,{}",
+                                b64
+                            ))));
                         } else {
                             qr_data_url.set(None);
                         }
