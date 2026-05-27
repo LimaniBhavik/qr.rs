@@ -55,13 +55,13 @@ pub fn qr_web() -> Html {
     let qr_data_url = use_state(|| None::<AttrValue>);
 
     {
-        let mode_val = *mode;
-        let url_val = (*url_input).clone();
-        let text_val = (*text_input).clone();
-        let contact_val = (*contact).clone();
-        let ec_val = (*ec_level).clone();
-        let fg_val = (*fg_color).clone();
-        let bg_val = (*bg_color).clone();
+        let mode_val = mode.clone();
+        let url_val = url_input.clone();
+        let text_val = text_input.clone();
+        let contact_val = contact.clone();
+        let ec_val = ec_level.clone();
+        let fg_val = fg_color.clone();
+        let bg_val = bg_color.clone();
         let qr_data_url = qr_data_url.clone();
 
         use_effect_with(
@@ -75,13 +75,13 @@ pub fn qr_web() -> Html {
                 bg_val,
             ),
             move |(m, u, t, c, ec, fg, bg)| {
-                let m = *m;
-                let u = u.clone();
-                let t = t.clone();
-                let c = c.clone();
-                let ec = ec.clone();
-                let fg = fg.clone();
-                let bg = bg.clone();
+                let m = **m;
+                let u = (**u).clone();
+                let t = (**t).clone();
+                let c = (**c).clone();
+                let ec = (**ec).clone();
+                let fg = (**fg).clone();
+                let bg = (**bg).clone();
 
                 // Set up a 300ms debounce timeout
                 let timeout = Timeout::new(300, move || {
