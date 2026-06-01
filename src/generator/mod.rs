@@ -100,22 +100,22 @@ impl QRGenerator {
 
         let content = match &self.data {
             QRData::URL(url) => format_url(url),
-            QRData::Text(text) => text.clone(),
+            QRData::Text(text) => std::borrow::Cow::Borrowed(text.as_str()),
             QRData::Contact(contact) => {
                 contact.validate()?;
-                generate_vcard(contact)
+                std::borrow::Cow::Owned(generate_vcard(contact))
             }
             QRData::Wifi(wifi) => {
                 wifi.validate()?;
-                generate_wifi(wifi)
+                std::borrow::Cow::Owned(generate_wifi(wifi))
             }
             QRData::Location(location) => {
                 location.validate()?;
-                generate_geo_uri(location)
+                std::borrow::Cow::Owned(generate_geo_uri(location))
             }
         };
 
-        QrCode::with_error_correction_level(&content, self.error_correction)
+        QrCode::with_error_correction_level(content.as_bytes(), self.error_correction)
             .map_err(QRError::QrGenerationError)
     }
 
@@ -131,14 +131,17 @@ impl QRGenerator {
         let height = qr_image.height();
 
         let mut image = RgbaImage::new(width, height);
-
-        for (target_pixel, pixel) in image.pixels_mut().zip(qr_image.pixels()) {
-            *target_pixel = if pixel.0[0] == 0 {
-                self.foreground_color
-            } else {
-                self.background_color
-            };
-        }
+        image
+            .chunks_exact_mut(4)
+            .zip(qr_image.as_raw().iter())
+            .for_each(|(pixel, &luma)| {
+                let color = if luma == 0 {
+                    &self.foreground_color.0
+                } else {
+                    &self.background_color.0
+                };
+                pixel.copy_from_slice(color);
+            });
 
         if let Some(logo_img) = logo {
             info!("Adding logo to QR code");
@@ -164,13 +167,15 @@ impl QRGenerator {
     pub fn to_png(&self, size: u32, logo: Option<&DynamicImage>) -> Result<Vec<u8>, QRError> {
         let image = self.to_image(size, logo)?;
 
-        let mut bytes: Vec<u8> = Vec::new();
-        let mut cursor = Cursor::new(&mut bytes);
+        // Heuristic: PNGs are compressed, so we allocate ~10% of the raw RGBA pixel count
+        // to minimize reallocations during encoding while not drastically over-allocating.
+        let capacity = (image.width() * image.height() / 10) as usize;
+        let mut cursor = Cursor::new(Vec::with_capacity(capacity));
         image
             .write_to(&mut cursor, ImageFormat::Png)
             .map_err(QRError::ImageError)?;
 
-        Ok(bytes)
+        Ok(cursor.into_inner())
     }
 
     pub fn to_svg(&self) -> Result<String, QRError> {
@@ -224,7 +229,7 @@ mod tests {
     fn test_generate_wifi() {
         let wifi = crate::formats::WifiData {
             ssid: "TestNet".to_string(),
-            password: "pass".to_string(),
+            password: "password123".to_string(),
             ..Default::default()
         };
         let generator = QRGenerator::new(QRData::Wifi(wifi));
@@ -275,5 +280,83 @@ mod tests {
             Err(QRError::InvalidData(msg)) => assert_eq!(msg, "No data provided"),
             _ => panic!("Expected QRError::InvalidData"),
         }
+    }
+
+    #[test]
+    fn test_to_png_basic() {
+        let generator = QRGenerator::new(QRData::Text("Test PNG".to_string()));
+        let result = generator.to_png(200, None);
+        assert!(result.is_ok());
+        let png_bytes = result.unwrap();
+        assert!(!png_bytes.is_empty(), "PNG bytes should not be empty");
+
+        // PNG magic number: 137 80 78 71 13 10 26 10
+        let png_magic_number: [u8; 8] = [137, 80, 78, 71, 13, 10, 26, 10];
+        assert!(
+            png_bytes.len() >= 8,
+            "PNG output too small to contain magic number"
+        );
+        assert_eq!(
+            &png_bytes[0..8],
+            &png_magic_number,
+            "Output does not have valid PNG magic number"
+        );
+    }
+
+    #[test]
+    fn test_to_svg_basic() {
+        let generator = QRGenerator::new(QRData::Text("Test SVG".to_string()));
+        let result = generator.to_svg();
+        assert!(result.is_ok());
+        let svg_string = result.unwrap();
+        assert!(
+            svg_string.contains("<svg"),
+            "SVG output should contain <svg tag"
+        );
+        assert!(
+            svg_string.contains("</svg>"),
+            "SVG output should contain closing </svg> tag"
+        );
+    }
+
+    #[test]
+    fn test_to_svg_contains_xml_declaration() {
+        let generator = QRGenerator::new(QRData::Text("Test XML Decl".to_string()));
+        let result = generator.to_svg();
+        assert!(result.is_ok());
+        let svg_string = result.unwrap();
+        assert!(
+            svg_string.starts_with("<?xml"),
+            "SVG output should start with XML declaration"
+        );
+    }
+
+    #[test]
+    fn test_to_png_with_logo() {
+        let generator = QRGenerator::new(QRData::Text("Test PNG with Logo".to_string()));
+
+        // Create a dummy logo (e.g., 20x20 transparent/red image)
+        let logo_image = image::RgbaImage::new(20, 20);
+        let dynamic_logo = image::DynamicImage::ImageRgba8(logo_image);
+
+        let result = generator.to_png(200, Some(&dynamic_logo));
+        assert!(result.is_ok());
+        let png_bytes = result.unwrap();
+        assert!(
+            !png_bytes.is_empty(),
+            "PNG bytes with logo should not be empty"
+        );
+
+        // PNG magic number: 137 80 78 71 13 10 26 10
+        let png_magic_number: [u8; 8] = [137, 80, 78, 71, 13, 10, 26, 10];
+        assert!(
+            png_bytes.len() >= 8,
+            "PNG output too small to contain magic number"
+        );
+        assert_eq!(
+            &png_bytes[0..8],
+            &png_magic_number,
+            "Output does not have valid PNG magic number"
+        );
     }
 }

@@ -1,5 +1,5 @@
 [package]
-name = "qr-web"
+name = "qr_web"
 version = "0.4.1"
 edition = "2021"
 
@@ -9,6 +9,21 @@ yew = { version = "0.21", features = ["csr"] }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", features = ["HtmlInputElement", "HtmlTextAreaElement", "InputEvent"] }
-gloo = "0.11"
+gloo = { version = "0.11", features = ["futures"] }
 gloo-console = "0.3"
 base64 = "0.21"
+
+[dev-dependencies]
+criterion = "0.5.1"
+
+[[bench]]
+name = "png_generation_bench"
+harness = false
+
+[[bench]]
+name = "yew_bench"
+harness = false
+
+[[bin]]
+name = "qr_web"
+path = "src/main.rs"

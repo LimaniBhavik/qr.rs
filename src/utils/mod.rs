@@ -13,8 +13,12 @@ fn hex_val(c: u8) -> Option<u8> {
     }
 }
 
+/// Parses a hex color string (e.g., "#FFFFFF", "FF0000FF") into an RGBA byte array.
+///
+/// Uses `strip_prefix` to strictly remove at most one leading '#' character,
+/// ensuring that malformed inputs like "##FFFFFF" are rejected as invalid.
 pub fn parse_hex_color(hex: &str) -> Option<[u8; 4]> {
-    let hex = hex.trim_start_matches('#');
+    let hex = hex.strip_prefix('#').unwrap_or(hex);
     if hex.len() != 6 && hex.len() != 8 {
         return None;
     }
@@ -57,9 +61,6 @@ mod tests {
         assert_eq!(parse_hex_color("000000"), Some([0, 0, 0, 255]));
         assert_eq!(parse_hex_color("000000FF"), Some([0, 0, 0, 255]));
         assert_eq!(parse_hex_color("aBcDeF"), Some([171, 205, 239, 255]));
-
-        // With multiple hashes (since trim_start_matches removes all leading matches)
-        assert_eq!(parse_hex_color("##FFFFFF"), Some([255, 255, 255, 255]));
     }
 
     #[test]
@@ -79,6 +80,9 @@ mod tests {
         assert_eq!(parse_hex_color("#FF 000"), None); // Space in the middle
         assert_eq!(parse_hex_color(" #FFFFFF"), None); // Leading space (trim_start_matches only removes '#')
         assert_eq!(parse_hex_color("#FFFFFF "), None); // Trailing space
+
+        // With multiple hashes (since strip_prefix only removes one leading match)
+        assert_eq!(parse_hex_color("##FFFFFF"), None);
 
         // Non-ASCII characters
         assert_eq!(parse_hex_color("#FF🚀000"), None); // Emoji

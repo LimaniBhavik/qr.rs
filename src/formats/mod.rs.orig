@@ -1,6 +1,7 @@
 use crate::error::QRError;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::sync::OnceLock;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
@@ -37,48 +38,9 @@ pub struct LocationData {
 
 fn is_valid_email(email: &str) -> bool {
     static EMAIL_REGEX: OnceLock<Regex> = OnceLock::new();
-    // Use a simpler regex to prevent ReDoS, followed by strict string validation
-    let is_match = EMAIL_REGEX
-        .get_or_init(|| {
-            Regex::new(r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~.-]+@[a-zA-Z0-9.-]+$")
-                .expect("Invalid email regex pattern")
-        })
-        .is_match(email);
-
-    if !is_match {
-        return false;
-    }
-
-    let parts: Vec<&str> = email.split('@').collect();
-    if parts.len() != 2 {
-        return false;
-    }
-
-    let local = parts[0];
-    let domain = parts[1];
-
-    if local.starts_with('.') || local.ends_with('.') || local.contains("..") {
-        return false;
-    }
-
-    if domain.starts_with('.') || domain.ends_with('.') || domain.contains("..") {
-        return false;
-    }
-
-    if domain.starts_with('-')
-        || domain.ends_with('-')
-        || domain.contains(".-")
-        || domain.contains("-.")
-    {
-        return false;
-    }
-
-    for segment in domain.split('.') {
-        if segment.len() > 63 {
-            return false;
-        }
-    }
-    true
+    EMAIL_REGEX.get_or_init(|| {
+        Regex::new(r"^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$").expect("Invalid email regex pattern")
+    }).is_match(email)
 }
 
 fn is_valid_phone(phone: &str) -> bool {
@@ -142,34 +104,9 @@ impl ContactData {
 
 impl WifiData {
     pub fn validate(&self) -> Result<(), QRError> {
-        if self.ssid.trim().is_empty() {
+        if self.ssid.is_empty() {
             return Err(QRError::InvalidData("SSID cannot be empty".to_string()));
         }
-        if self.ssid.len() > 32 {
-            return Err(QRError::InvalidData(
-                "SSID cannot be longer than 32 characters".to_string(),
-            ));
-        }
-
-        match self.encryption {
-            WifiEncryption::WPA => {
-                let pw_len = self.password.len();
-                if !(8..=63).contains(&pw_len) {
-                    return Err(QRError::InvalidData(
-                        "WPA password must be between 8 and 63 characters".to_string(),
-                    ));
-                }
-            }
-            WifiEncryption::Nopass => {
-                if !self.password.is_empty() {
-                    return Err(QRError::InvalidData(
-                        "Password must be empty for unencrypted network".to_string(),
-                    ));
-                }
-            }
-            WifiEncryption::WEP => {}
-        }
-
         Ok(())
     }
 }
@@ -227,8 +164,6 @@ fn escape_vcard_value_to(s: &str, out: &mut String) {
             ':' => out.push_str("\\:"),
             '\n' => out.push_str("\\n"),
             '\r' => out.push_str("\\r"),
-            _ if c.is_control() => {}
-            '\u{2028}' | '\u{2029}' | '\u{0085}' => {}
             _ => out.push(c),
         }
     }
@@ -380,23 +315,6 @@ mod tests {
         assert!(!vcard.contains("\nURL:"));
         assert!(!vcard.contains("\nTEL:"));
         assert!(!vcard.contains("\r\nTEL:"));
-    }
-
-    #[test]
-    fn test_vcard_control_char_injection() {
-        // Attempt to inject a new field using control characters and unicode line separators
-        let contact = ContactData {
-            organization: "Evil\x0bCorp\u{2028}URL:http://malicious.com\u{0085}TEL:+12345"
-                .to_string(),
-            ..ContactData::default()
-        };
-
-        let vcard = generate_vcard(&contact);
-        // Control characters and line separators should be stripped out
-        assert!(vcard.contains("ORG:EvilCorpURL\\:http\\://malicious.comTEL\\:+12345"));
-        assert!(!vcard.contains("\x0b"));
-        assert!(!vcard.contains("\u{2028}"));
-        assert!(!vcard.contains("\u{0085}"));
     }
 
     #[test]
@@ -636,79 +554,6 @@ mod tests {
             wifi_string,
             "WIFI:T:WPA;S:My\\;Network;P:pass\\\\word\\:123;H:false;;"
         );
-    }
-
-    #[test]
-    fn test_wifi_validation() {
-        let valid_wifi = WifiData {
-            ssid: "MyNetwork".to_string(),
-            password: "password".to_string(),
-            encryption: WifiEncryption::WPA,
-            hidden: false,
-        };
-        assert!(valid_wifi.validate().is_ok());
-
-        let invalid_wifi_empty_ssid = WifiData {
-            ssid: "".to_string(),
-            password: "password".to_string(),
-            encryption: WifiEncryption::WPA,
-            hidden: false,
-        };
-        let result = invalid_wifi_empty_ssid.validate();
-        assert!(result.is_err());
-        if let Err(QRError::InvalidData(msg)) = result {
-            assert_eq!(msg, "SSID cannot be empty");
-        } else {
-            panic!("Expected InvalidData error");
-        }
-
-        let invalid_wifi_whitespace_ssid = WifiData {
-            ssid: "   ".to_string(),
-            password: "password".to_string(),
-            encryption: WifiEncryption::WPA,
-            hidden: false,
-        };
-        assert!(invalid_wifi_whitespace_ssid.validate().is_err());
-
-        let invalid_wifi_long_ssid = WifiData {
-            ssid: "a".repeat(33),
-            password: "password".to_string(),
-            encryption: WifiEncryption::WPA,
-            hidden: false,
-        };
-        assert!(invalid_wifi_long_ssid.validate().is_err());
-
-        let invalid_wifi_wpa_short_pw = WifiData {
-            ssid: "MyNetwork".to_string(),
-            password: "short".to_string(),
-            encryption: WifiEncryption::WPA,
-            hidden: false,
-        };
-        assert!(invalid_wifi_wpa_short_pw.validate().is_err());
-
-        let invalid_wifi_wpa_long_pw = WifiData {
-            ssid: "MyNetwork".to_string(),
-            password: "a".repeat(64),
-            encryption: WifiEncryption::WPA,
-            hidden: false,
-        };
-        assert!(invalid_wifi_wpa_long_pw.validate().is_err());
-
-        let invalid_wifi_nopass_with_pw = WifiData {
-            ssid: "MyNetwork".to_string(),
-            password: "password".to_string(),
-            encryption: WifiEncryption::Nopass,
-            hidden: false,
-        };
-        assert!(invalid_wifi_nopass_with_pw.validate().is_err());
-
-        let valid_wifi_nopass = WifiData {
-            ssid: "MyNetwork".to_string(),
-            password: "".to_string(),
-            encryption: WifiEncryption::Nopass,
-            hidden: false,
-        };
-        assert!(valid_wifi_nopass.validate().is_ok());
     }
 
     #[test]

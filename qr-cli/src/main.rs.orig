@@ -4,60 +4,8 @@ use dialoguer::{theme::ColorfulTheme, Input, Select};
 use indicatif::{ProgressBar, ProgressStyle};
 use qr_rs::utils::parse_hex_color;
 use qr_rs::{ContactData, QRBuilder, QRData};
-use std::fs::OpenOptions;
-use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::Duration;
-
-fn validate_output_path(path: &Path) -> Result<(), std::io::Error> {
-    let current_dir = std::env::current_dir()?;
-    let canonical_current = current_dir.canonicalize()?;
-
-    let parent = path.parent().unwrap_or_else(|| Path::new(""));
-    let parent = if parent.as_os_str().is_empty() {
-        Path::new(".")
-    } else {
-        parent
-    };
-
-    let canonical_parent = parent.canonicalize()?;
-
-    if !canonical_parent.starts_with(&canonical_current) {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::PermissionDenied,
-            "Output path is outside the current working directory",
-        ));
-    }
-
-    Ok(())
-}
-
-fn secure_write(
-    path: &Path,
-    contents: impl AsRef<[u8]>,
-    force: bool,
-) -> Result<(), std::io::Error> {
-    validate_output_path(path)?;
-
-    let write_file = || -> Result<(), std::io::Error> {
-        let mut file = OpenOptions::new().write(true).create_new(true).open(path)?;
-        file.write_all(contents.as_ref())?;
-        Ok(())
-    };
-
-    match write_file() {
-        Ok(_) => Ok(()),
-        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
-            if force {
-                std::fs::remove_file(path)?;
-                write_file()
-            } else {
-                Err(e)
-            }
-        }
-        Err(e) => Err(e),
-    }
-}
 
 #[derive(Parser)]
 #[command(name = "qr-cli")]
@@ -218,7 +166,7 @@ fn main() {
             logo,
         }) => {
             let builder = configure_builder(ec_level, foreground, background).url(url);
-            generate(builder, output, logo, None, None, cli.force);
+            generate(builder, output, logo, None, None);
         }
         Some(Commands::Text {
             text,
@@ -229,7 +177,7 @@ fn main() {
             logo,
         }) => {
             let builder = configure_builder(ec_level, foreground, background).text(text);
-            generate(builder, output, logo, None, None, cli.force);
+            generate(builder, output, logo, None, None);
         }
         Some(Commands::Contact {
             first_name,
@@ -254,7 +202,7 @@ fn main() {
             };
             let builder =
                 configure_builder(ec_level, foreground, background).data(QRData::Contact(contact));
-            generate(builder, output, logo, None, None, cli.force);
+            generate(builder, output, logo, None, None);
         }
         Some(Commands::Interactive) | None => {
             if let Err(e) = run_interactive() {
@@ -274,13 +222,22 @@ fn run_simple_mode(cli: &Cli, input: String) {
         .error_correction(cli.error_correction_level.into())
         .colors(fg_color, bg_color);
 
+    if let Some(path) = &cli.output {
+        if path.exists() && !cli.force {
+            eprintln!(
+                "Error: File '{}' already exists. Use --force to overwrite.",
+                path.display()
+            );
+            std::process::exit(1);
+        }
+    }
+
     generate(
         builder,
         cli.output.clone(),
         None,
         Some(cli.scale),
         Some(cli.border),
-        cli.force,
     );
 }
 
@@ -290,13 +247,12 @@ fn generate(
     logo_path: Option<PathBuf>,
     scale: Option<u32>,
     border: Option<u32>,
-    force: bool,
 ) {
     let pb = ProgressBar::new_spinner();
     pb.set_style(
         ProgressStyle::default_spinner()
             .template("{spinner:.green} {msg}")
-            .expect("Invalid progress bar template"),
+            .unwrap_or_else(|_| ProgressStyle::default_spinner()),
     );
     pb.set_message("Generating QR Code...");
     pb.enable_steady_tick(Duration::from_millis(100));
@@ -310,9 +266,9 @@ fn generate(
                     let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("png");
 
                     if extension.eq_ignore_ascii_case("svg") {
-                        save_svg(&generator, &path, force);
+                        save_svg(&generator, &path);
                     } else {
-                        save_png(&generator, &qr, &path, logo_path, scale, border, force);
+                        save_png(&generator, &qr, &path, logo_path, scale, border);
                     }
                 } else {
                     print_terminal_qr(&qr);
@@ -330,63 +286,43 @@ fn generate(
     }
 }
 
-fn save_svg(generator: &qr_rs::generator::QRGenerator, path: &Path, force: bool) {
+
+fn save_svg(generator: &qr_rs::generator::QRGenerator, path: &PathBuf) {
     match generator.to_svg() {
         Ok(svg) => {
-            if let Err(e) = secure_write(path, svg, force) {
+            if let Err(e) = std::fs::write(path, svg) {
                 eprintln!("{} {}", "Error writing SVG:".red(), e);
-                std::process::exit(1);
             }
         }
-        Err(e) => {
-            eprintln!("{} {}", "Error generating SVG:".red(), e);
-            std::process::exit(1);
-        }
+        Err(e) => eprintln!("{} {}", "Error generating SVG:".red(), e),
     }
 }
 
 fn save_png(
     generator: &qr_rs::generator::QRGenerator,
     _qr: &qr_rs::qrcode::QrCode,
-    path: &Path,
+    path: &PathBuf,
     logo_path: Option<PathBuf>,
     scale: Option<u32>,
     _border: Option<u32>,
-    force: bool,
 ) {
     let size = scale.unwrap_or(25);
 
     let mut loaded_logo = None;
     if let Some(l_path) = logo_path {
-        let load_result = image::ImageReader::open(&l_path).and_then(|mut r| {
-            let mut limits = image::Limits::default();
-            limits.max_alloc = Some(512 * 1024 * 1024);
-            limits.max_image_width = Some(4096);
-            limits.max_image_height = Some(4096);
-            r.limits(limits);
-            r.decode().map_err(std::io::Error::other)
-        });
-
-        match load_result {
+        match image::ImageReader::open(&l_path).and_then(|r| r.decode().map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))) {
             Ok(img) => loaded_logo = Some(img),
-            Err(e) => {
-                eprintln!("{} {}", "Warning: Failed to load logo image:".yellow(), e);
-                std::process::exit(1);
-            }
+            Err(e) => eprintln!("{} {}", "Warning: Failed to load logo image:".yellow(), e),
         }
     }
 
     match generator.to_png(size, loaded_logo.as_ref()) {
         Ok(bytes) => {
-            if let Err(e) = secure_write(path, bytes, force) {
+            if let Err(e) = std::fs::write(path, bytes) {
                 eprintln!("{} {}", "Error writing PNG:".red(), e);
-                std::process::exit(1);
             }
         }
-        Err(e) => {
-            eprintln!("{} {}", "Error generating PNG:".red(), e);
-            std::process::exit(1);
-        }
+        Err(e) => eprintln!("{} {}", "Error generating PNG:".red(), e),
     }
 }
 
@@ -399,6 +335,7 @@ fn print_terminal_qr(qr: &qr_rs::qrcode::QrCode) {
 }
 
 fn prompt_for_output(prompt: &str) -> Result<Option<PathBuf>, String> {
+
     let output: String = Input::with_theme(&ColorfulTheme::default())
         .with_prompt(prompt)
         .allow_empty(true)
@@ -412,19 +349,15 @@ fn prompt_for_output(prompt: &str) -> Result<Option<PathBuf>, String> {
     }
 }
 
-fn finish_interactive_generation(builder: QRBuilder) -> Result<(), String> {
-    let path = prompt_for_output("Output file (optional, leave empty for terminal)")?;
-    generate(builder, path, None, None, None, false);
-    Ok(())
-}
-
 fn handle_interactive_url(builder: QRBuilder) -> Result<(), String> {
     let url: String = Input::with_theme(&ColorfulTheme::default())
         .with_prompt("Enter URL")
         .interact_text()
         .map_err(|e| e.to_string())?;
 
-    finish_interactive_generation(builder.url(url))
+    let path = prompt_for_output("Output file (optional, leave empty for terminal)")?;
+    generate(builder.url(url), path, None, None, None);
+    Ok(())
 }
 
 fn handle_interactive_text(builder: QRBuilder) -> Result<(), String> {
@@ -433,7 +366,9 @@ fn handle_interactive_text(builder: QRBuilder) -> Result<(), String> {
         .interact_text()
         .map_err(|e| e.to_string())?;
 
-    finish_interactive_generation(builder.text(text))
+    let path = prompt_for_output("Output file (optional)")?;
+    generate(builder.text(text), path, None, None, None);
+    Ok(())
 }
 
 fn handle_interactive_contact(builder: QRBuilder) -> Result<(), String> {
@@ -477,7 +412,15 @@ fn handle_interactive_contact(builder: QRBuilder) -> Result<(), String> {
         website,
     };
 
-    finish_interactive_generation(builder.data(QRData::Contact(contact)))
+    let path = prompt_for_output("Output file (optional)")?;
+    generate(
+        builder.data(QRData::Contact(contact)),
+        path,
+        None,
+        None,
+        None,
+    );
+    Ok(())
 }
 
 fn run_interactive() -> Result<(), String> {
