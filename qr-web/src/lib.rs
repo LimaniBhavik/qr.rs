@@ -1,4 +1,8 @@
+#![allow(dead_code)]
 use base64::{engine::general_purpose, Engine as _};
+use gloo::timers::callback::Timeout;
+use gloo::timers::future::TimeoutFuture;
+use qr_rs::formats::ContactData;
 use qr_rs::utils::parse_hex_color;
 use qr_rs::{QRBuilder, QRData};
 use wasm_bindgen::prelude::*;
@@ -97,8 +101,8 @@ pub fn qr_web() -> Html {
                     None
                 }
             },
-        )
-    };
+        );
+    }
 
     let on_mode_url = {
         let mode = mode.clone();
