@@ -4,9 +4,7 @@ use dialoguer::{theme::ColorfulTheme, Input, Select};
 use indicatif::{ProgressBar, ProgressStyle};
 use qr_rs::utils::parse_hex_color;
 use qr_rs::{ContactData, QRBuilder, QRData};
-use std::fs::OpenOptions;
-use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::Duration;
 
 fn validate_output_path(path: &Path) -> Result<(), std::io::Error> {
@@ -330,63 +328,43 @@ fn generate(
     }
 }
 
-fn save_svg(generator: &qr_rs::generator::QRGenerator, path: &Path, force: bool) {
+
+fn save_svg(generator: &qr_rs::generator::QRGenerator, path: &PathBuf) {
     match generator.to_svg() {
         Ok(svg) => {
-            if let Err(e) = secure_write(path, svg, force) {
+            if let Err(e) = std::fs::write(path, svg) {
                 eprintln!("{} {}", "Error writing SVG:".red(), e);
-                std::process::exit(1);
             }
         }
-        Err(e) => {
-            eprintln!("{} {}", "Error generating SVG:".red(), e);
-            std::process::exit(1);
-        }
+        Err(e) => eprintln!("{} {}", "Error generating SVG:".red(), e),
     }
 }
 
 fn save_png(
     generator: &qr_rs::generator::QRGenerator,
     _qr: &qr_rs::qrcode::QrCode,
-    path: &Path,
+    path: &PathBuf,
     logo_path: Option<PathBuf>,
     scale: Option<u32>,
     _border: Option<u32>,
-    force: bool,
 ) {
     let size = scale.unwrap_or(25);
 
     let mut loaded_logo = None;
     if let Some(l_path) = logo_path {
-        let load_result = image::ImageReader::open(&l_path).and_then(|mut r| {
-            let mut limits = image::Limits::default();
-            limits.max_alloc = Some(512 * 1024 * 1024);
-            limits.max_image_width = Some(4096);
-            limits.max_image_height = Some(4096);
-            r.limits(limits);
-            r.decode().map_err(std::io::Error::other)
-        });
-
-        match load_result {
+        match image::ImageReader::open(&l_path).and_then(|r| r.decode().map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))) {
             Ok(img) => loaded_logo = Some(img),
-            Err(e) => {
-                eprintln!("{} {}", "Warning: Failed to load logo image:".yellow(), e);
-                std::process::exit(1);
-            }
+            Err(e) => eprintln!("{} {}", "Warning: Failed to load logo image:".yellow(), e),
         }
     }
 
     match generator.to_png(size, loaded_logo.as_ref()) {
         Ok(bytes) => {
-            if let Err(e) = secure_write(path, bytes, force) {
+            if let Err(e) = std::fs::write(path, bytes) {
                 eprintln!("{} {}", "Error writing PNG:".red(), e);
-                std::process::exit(1);
             }
         }
-        Err(e) => {
-            eprintln!("{} {}", "Error generating PNG:".red(), e);
-            std::process::exit(1);
-        }
+        Err(e) => eprintln!("{} {}", "Error generating PNG:".red(), e),
     }
 }
 
@@ -399,6 +377,7 @@ fn print_terminal_qr(qr: &qr_rs::qrcode::QrCode) {
 }
 
 fn prompt_for_output(prompt: &str) -> Result<Option<PathBuf>, String> {
+
     let output: String = Input::with_theme(&ColorfulTheme::default())
         .with_prompt(prompt)
         .allow_empty(true)

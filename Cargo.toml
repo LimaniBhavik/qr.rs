@@ -12,8 +12,6 @@ categories = ["multimedia::images", "encoding"]
 
 [workspace]
 members = [
-  "qr-web",
-  "qr-cli",
 ]
 resolver = "2"
 
@@ -35,8 +33,3 @@ name = "qr_rs"
 path = "src/lib.rs"
 
 
-
-
-[[bench]]
-name = "image_bench"
-harness = false

@@ -1,6 +1,6 @@
-use qr_rs::ContactData;
-use web_sys::HtmlInputElement;
 use yew::prelude::*;
+use web_sys::HtmlInputElement;
+use qr_rs::ContactData;
 
 #[derive(Clone, PartialEq, Debug, Default)]
 pub struct ContactState {
@@ -38,14 +38,9 @@ pub fn contact_input(props: &ContactInputProps) -> Html {
         let on_update = props.on_update.clone();
         Callback::from(move |e: InputEvent| {
             let input: HtmlInputElement = e.target_unchecked_into();
-            on_update.emit(ContactState {
-                first_name: AttrValue::from(input.value()),
-                last_name: contact.last_name.clone(),
-                phone: contact.phone.clone(),
-                email: contact.email.clone(),
-                organization: contact.organization.clone(),
-                website: contact.website.clone(),
-            });
+            let mut c = contact.clone();
+            c.first_name = AttrValue::from(input.value());
+            on_update.emit(c);
         })
     };
 
@@ -54,14 +49,9 @@ pub fn contact_input(props: &ContactInputProps) -> Html {
         let on_update = props.on_update.clone();
         Callback::from(move |e: InputEvent| {
             let input: HtmlInputElement = e.target_unchecked_into();
-            on_update.emit(ContactState {
-                last_name: AttrValue::from(input.value()),
-                first_name: contact.first_name.clone(),
-                phone: contact.phone.clone(),
-                email: contact.email.clone(),
-                organization: contact.organization.clone(),
-                website: contact.website.clone(),
-            });
+            let mut c = contact.clone();
+            c.last_name = AttrValue::from(input.value());
+            on_update.emit(c);
         })
     };
 
@@ -70,14 +60,9 @@ pub fn contact_input(props: &ContactInputProps) -> Html {
         let on_update = props.on_update.clone();
         Callback::from(move |e: InputEvent| {
             let input: HtmlInputElement = e.target_unchecked_into();
-            on_update.emit(ContactState {
-                email: AttrValue::from(input.value()),
-                first_name: contact.first_name.clone(),
-                last_name: contact.last_name.clone(),
-                phone: contact.phone.clone(),
-                organization: contact.organization.clone(),
-                website: contact.website.clone(),
-            });
+            let mut c = contact.clone();
+            c.email = AttrValue::from(input.value());
+            on_update.emit(c);
         })
     };
 
@@ -86,14 +71,9 @@ pub fn contact_input(props: &ContactInputProps) -> Html {
         let on_update = props.on_update.clone();
         Callback::from(move |e: InputEvent| {
             let input: HtmlInputElement = e.target_unchecked_into();
-            on_update.emit(ContactState {
-                phone: AttrValue::from(input.value()),
-                first_name: contact.first_name.clone(),
-                last_name: contact.last_name.clone(),
-                email: contact.email.clone(),
-                organization: contact.organization.clone(),
-                website: contact.website.clone(),
-            });
+            let mut c = contact.clone();
+            c.phone = AttrValue::from(input.value());
+            on_update.emit(c);
         })
     };
 
@@ -102,14 +82,9 @@ pub fn contact_input(props: &ContactInputProps) -> Html {
         let on_update = props.on_update.clone();
         Callback::from(move |e: InputEvent| {
             let input: HtmlInputElement = e.target_unchecked_into();
-            on_update.emit(ContactState {
-                organization: AttrValue::from(input.value()),
-                first_name: contact.first_name.clone(),
-                last_name: contact.last_name.clone(),
-                phone: contact.phone.clone(),
-                email: contact.email.clone(),
-                website: contact.website.clone(),
-            });
+            let mut c = contact.clone();
+            c.organization = AttrValue::from(input.value());
+            on_update.emit(c);
         })
     };
 
@@ -118,14 +93,9 @@ pub fn contact_input(props: &ContactInputProps) -> Html {
         let on_update = props.on_update.clone();
         Callback::from(move |e: InputEvent| {
             let input: HtmlInputElement = e.target_unchecked_into();
-            on_update.emit(ContactState {
-                website: AttrValue::from(input.value()),
-                first_name: contact.first_name.clone(),
-                last_name: contact.last_name.clone(),
-                phone: contact.phone.clone(),
-                email: contact.email.clone(),
-                organization: contact.organization.clone(),
-            });
+            let mut c = contact.clone();
+            c.website = AttrValue::from(input.value());
+            on_update.emit(c);
         })
     };
 
