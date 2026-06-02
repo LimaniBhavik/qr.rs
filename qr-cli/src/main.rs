@@ -1,11 +1,9 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use colored::*;
 use dialoguer::{theme::ColorfulTheme, Input, Select};
-use image::ImageReader;
 use indicatif::{ProgressBar, ProgressStyle};
 use qr_rs::utils::parse_hex_color;
 use qr_rs::{ContactData, QRBuilder, QRData};
-use std::fs;
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -288,7 +286,56 @@ fn generate(
     }
 }
 
+
+fn save_svg(generator: &qr_rs::generator::QRGenerator, path: &PathBuf) {
+    match generator.to_svg() {
+        Ok(svg) => {
+            if let Err(e) = std::fs::write(path, svg) {
+                eprintln!("{} {}", "Error writing SVG:".red(), e);
+            }
+        }
+        Err(e) => eprintln!("{} {}", "Error generating SVG:".red(), e),
+    }
+}
+
+fn save_png(
+    generator: &qr_rs::generator::QRGenerator,
+    _qr: &qr_rs::qrcode::QrCode,
+    path: &PathBuf,
+    logo_path: Option<PathBuf>,
+    scale: Option<u32>,
+    _border: Option<u32>,
+) {
+    let size = scale.unwrap_or(25);
+
+    let mut loaded_logo = None;
+    if let Some(l_path) = logo_path {
+        match image::ImageReader::open(&l_path).and_then(|r| r.decode().map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))) {
+            Ok(img) => loaded_logo = Some(img),
+            Err(e) => eprintln!("{} {}", "Warning: Failed to load logo image:".yellow(), e),
+        }
+    }
+
+    match generator.to_png(size, loaded_logo.as_ref()) {
+        Ok(bytes) => {
+            if let Err(e) = std::fs::write(path, bytes) {
+                eprintln!("{} {}", "Error writing PNG:".red(), e);
+            }
+        }
+        Err(e) => eprintln!("{} {}", "Error generating PNG:".red(), e),
+    }
+}
+
+fn print_terminal_qr(qr: &qr_rs::qrcode::QrCode) {
+    let string = qr
+        .render::<qr_rs::qrcode::render::unicode::Dense1x2>()
+        .quiet_zone(false)
+        .build();
+    println!("{}", string);
+}
+
 fn prompt_for_output(prompt: &str) -> Result<Option<PathBuf>, String> {
+
     let output: String = Input::with_theme(&ColorfulTheme::default())
         .with_prompt(prompt)
         .allow_empty(true)

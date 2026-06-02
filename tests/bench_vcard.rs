@@ -14,16 +14,16 @@ fn has_http_protocol(url: &str) -> bool {
     url.to_lowercase().starts_with("http://") || url.to_lowercase().starts_with("https://")
 }
 
-pub fn format_url(url: &str) -> String {
+pub fn format_url(url: &str) -> std::borrow::Cow<'_, str> {
     let trimmed = url.trim();
     if trimmed.is_empty() {
-        return String::new();
+        return std::borrow::Cow::Borrowed("");
     }
 
     if has_http_protocol(trimmed) {
-        trimmed.to_string()
+        std::borrow::Cow::Borrowed(trimmed)
     } else {
-        format!("https://{}", trimmed)
+        std::borrow::Cow::Owned(format!("https://{}", trimmed))
     }
 }
 

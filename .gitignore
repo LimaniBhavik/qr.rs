@@ -1,3 +1,4 @@
 /target
 *.png
 demo_output/
+qr-web/dist
