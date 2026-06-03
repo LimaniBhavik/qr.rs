@@ -1,7 +1,5 @@
 #![allow(dead_code)]
 use base64::{engine::general_purpose, Engine as _};
-use gloo::timers::callback::Timeout;
-use gloo::timers::future::TimeoutFuture;
 use qr_rs::formats::ContactData;
 use qr_rs::utils::parse_hex_color;
 use qr_rs::{QRBuilder, QRData};
@@ -64,7 +62,15 @@ pub fn qr_web() -> Html {
         let bg_val = (*bg_color).clone();
 
         use_memo(
-            (mode_val, url_val, text_val, contact_val, ec_val, fg_val, bg_val),
+            (
+                mode_val,
+                url_val,
+                text_val,
+                contact_val,
+                ec_val,
+                fg_val,
+                bg_val,
+            ),
             |(m, u, t, c, ec, fg, bg)| {
                 let mut builder = QRBuilder::new();
 
@@ -78,14 +84,16 @@ pub fn qr_web() -> Html {
                 builder = builder.error_correction(level);
 
                 // Apply colors
-                if let (Some(fg_rgba), Some(bg_rgba)) = (parse_hex_color(fg.as_str()), parse_hex_color(bg.as_str())) {
+                if let (Some(fg_rgba), Some(bg_rgba)) =
+                    (parse_hex_color(fg.as_str()), parse_hex_color(bg.as_str()))
+                {
                     builder = builder.colors(fg_rgba, bg_rgba);
                 }
 
-                let data = match mode {
-                    Mode::Url => QRData::URL(url.to_string()),
-                    Mode::Text => QRData::Text(text.to_string()),
-                    Mode::Contact => QRData::Contact(ContactData::from((**contact).clone())),
+                let data = match m {
+                    Mode::Url => QRData::URL(u.to_string()),
+                    Mode::Text => QRData::Text(t.to_string()),
+                    Mode::Contact => QRData::Contact(ContactData::from((**c).clone())),
                 };
 
                 builder = builder.data(data);
@@ -117,7 +125,7 @@ pub fn qr_web() -> Html {
         Callback::from(move |_| mode.set(Mode::Contact))
     };
 
-    let on_url_input = {
+    let _on_url_input = {
         let url_input = url_input.clone();
         Callback::from(move |e: InputEvent| {
             let input: HtmlInputElement = e.target_unchecked_into();
@@ -125,7 +133,7 @@ pub fn qr_web() -> Html {
         })
     };
 
-    let on_text_input = {
+    let _on_text_input = {
         let text_input = text_input.clone();
         Callback::from(move |e: InputEvent| {
             let input: web_sys::HtmlTextAreaElement = e.target_unchecked_into();
@@ -133,14 +141,14 @@ pub fn qr_web() -> Html {
         })
     };
 
-    let on_contact_update = {
+    let _on_contact_update = {
         let contact = contact.clone();
         Callback::from(move |c: ContactState| {
             contact.set(c);
         })
     };
 
-    let on_ec_change = {
+    let _on_ec_change = {
         let ec_level = ec_level.clone();
         Callback::from(move |e: Event| {
             let input: HtmlInputElement = e.target_unchecked_into();
@@ -148,7 +156,7 @@ pub fn qr_web() -> Html {
         })
     };
 
-    let on_fg_input = {
+    let _on_fg_input = {
         let fg_color = fg_color.clone();
         Callback::from(move |e: InputEvent| {
             let input: HtmlInputElement = e.target_unchecked_into();
@@ -156,7 +164,7 @@ pub fn qr_web() -> Html {
         })
     };
 
-    let on_bg_input = {
+    let _on_bg_input = {
         let bg_color = bg_color.clone();
         Callback::from(move |e: InputEvent| {
             let input: HtmlInputElement = e.target_unchecked_into();
