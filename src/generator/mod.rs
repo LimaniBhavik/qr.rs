@@ -230,7 +230,7 @@ mod tests {
     fn test_generate_wifi() {
         let wifi = crate::formats::WifiData {
             ssid: "TestNet".to_string(),
-            password: "pass".to_string(),
+            password: "password123".to_string(),
             ..Default::default()
         };
         let generator = QRGenerator::new(QRData::Wifi(wifi));
@@ -281,5 +281,83 @@ mod tests {
             Err(QRError::InvalidData(msg)) => assert_eq!(msg, "No data provided"),
             _ => panic!("Expected QRError::InvalidData"),
         }
+    }
+
+    #[test]
+    fn test_to_png_basic() {
+        let generator = QRGenerator::new(QRData::Text("Test PNG".to_string()));
+        let result = generator.to_png(200, None);
+        assert!(result.is_ok());
+        let png_bytes = result.unwrap();
+        assert!(!png_bytes.is_empty(), "PNG bytes should not be empty");
+
+        // PNG magic number: 137 80 78 71 13 10 26 10
+        let png_magic_number: [u8; 8] = [137, 80, 78, 71, 13, 10, 26, 10];
+        assert!(
+            png_bytes.len() >= 8,
+            "PNG output too small to contain magic number"
+        );
+        assert_eq!(
+            &png_bytes[0..8],
+            &png_magic_number,
+            "Output does not have valid PNG magic number"
+        );
+    }
+
+    #[test]
+    fn test_to_svg_basic() {
+        let generator = QRGenerator::new(QRData::Text("Test SVG".to_string()));
+        let result = generator.to_svg();
+        assert!(result.is_ok());
+        let svg_string = result.unwrap();
+        assert!(
+            svg_string.contains("<svg"),
+            "SVG output should contain <svg tag"
+        );
+        assert!(
+            svg_string.contains("</svg>"),
+            "SVG output should contain closing </svg> tag"
+        );
+    }
+
+    #[test]
+    fn test_to_svg_contains_xml_declaration() {
+        let generator = QRGenerator::new(QRData::Text("Test XML Decl".to_string()));
+        let result = generator.to_svg();
+        assert!(result.is_ok());
+        let svg_string = result.unwrap();
+        assert!(
+            svg_string.starts_with("<?xml"),
+            "SVG output should start with XML declaration"
+        );
+    }
+
+    #[test]
+    fn test_to_png_with_logo() {
+        let generator = QRGenerator::new(QRData::Text("Test PNG with Logo".to_string()));
+
+        // Create a dummy logo (e.g., 20x20 transparent/red image)
+        let logo_image = image::RgbaImage::new(20, 20);
+        let dynamic_logo = image::DynamicImage::ImageRgba8(logo_image);
+
+        let result = generator.to_png(200, Some(&dynamic_logo));
+        assert!(result.is_ok());
+        let png_bytes = result.unwrap();
+        assert!(
+            !png_bytes.is_empty(),
+            "PNG bytes with logo should not be empty"
+        );
+
+        // PNG magic number: 137 80 78 71 13 10 26 10
+        let png_magic_number: [u8; 8] = [137, 80, 78, 71, 13, 10, 26, 10];
+        assert!(
+            png_bytes.len() >= 8,
+            "PNG output too small to contain magic number"
+        );
+        assert_eq!(
+            &png_bytes[0..8],
+            &png_magic_number,
+            "Output does not have valid PNG magic number"
+        );
     }
 }

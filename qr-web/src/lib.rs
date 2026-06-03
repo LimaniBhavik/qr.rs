@@ -1,9 +1,10 @@
+#![allow(dead_code)]
 use base64::{engine::general_purpose, Engine as _};
 use qr_rs::formats::ContactData;
 use qr_rs::utils::parse_hex_color;
 use qr_rs::{QRBuilder, QRData};
 use wasm_bindgen::prelude::*;
-use web_sys::{HtmlInputElement, HtmlTextAreaElement};
+use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
 mod components;
@@ -53,12 +54,12 @@ pub fn qr_web() -> Html {
 
     let qr_data_url = {
         let mode_val = *mode;
-        let url_val = url_input.clone();
-        let text_val = text_input.clone();
-        let contact_val = contact.clone();
-        let ec_val = ec_level.clone();
-        let fg_val = fg_color.clone();
-        let bg_val = bg_color.clone();
+        let url_val = (*url_input).clone();
+        let text_val = (*text_input).clone();
+        let contact_val = (*contact).clone();
+        let ec_val = (*ec_level).clone();
+        let fg_val = (*fg_color).clone();
+        let bg_val = (*bg_color).clone();
 
         use_memo(
             (
@@ -108,8 +109,8 @@ pub fn qr_web() -> Html {
                     None
                 }
             },
-        )
-    };
+        );
+    }
 
     let on_mode_url = {
         let mode = mode.clone();
