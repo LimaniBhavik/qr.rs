@@ -1,6 +1,6 @@
 [package]
 name = "qr-scan-rs"
-version = "0.4.1"
+version = "0.5.0"
 edition = "2021"
 authors = ["Bhavik <limanibhavik@gmail.com>"]
 license = "MIT OR Apache-2.0"
@@ -13,6 +13,8 @@ categories = ["multimedia::images", "encoding"]
 [workspace]
 members = [
     "qr-web",
+    "qr-cli",
+    "qr-gui",
 ]
 resolver = "2"
 

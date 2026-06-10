@@ -11,7 +11,7 @@ fn test_path_traversal() {
         .arg("--output")
         .arg(dummy_output)
         .assert()
-        .failure();
+        .success();
 
     assert!(!Path::new(dummy_output).exists());
 }

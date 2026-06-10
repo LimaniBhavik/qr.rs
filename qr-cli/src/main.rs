@@ -4,6 +4,9 @@ use dialoguer::{theme::ColorfulTheme, Input, Select};
 use indicatif::{ProgressBar, ProgressStyle};
 use qr_rs::utils::parse_hex_color;
 use qr_rs::{ContactData, QRBuilder, QRData};
+use std::fs::OpenOptions;
+use std::io::Write;
+use std::path::Path;
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -328,11 +331,10 @@ fn generate(
     }
 }
 
-
-fn save_svg(generator: &qr_rs::generator::QRGenerator, path: &PathBuf) {
+fn save_svg(generator: &qr_rs::generator::QRGenerator, path: &Path, _force: bool) {
     match generator.to_svg() {
         Ok(svg) => {
-            if let Err(e) = std::fs::write(path, svg) {
+            if let Err(e) = secure_write(path, svg, _force) {
                 eprintln!("{} {}", "Error writing SVG:".red(), e);
             }
         }
@@ -343,16 +345,19 @@ fn save_svg(generator: &qr_rs::generator::QRGenerator, path: &PathBuf) {
 fn save_png(
     generator: &qr_rs::generator::QRGenerator,
     _qr: &qr_rs::qrcode::QrCode,
-    path: &PathBuf,
+    path: &Path,
     logo_path: Option<PathBuf>,
     scale: Option<u32>,
     _border: Option<u32>,
+    _force: bool,
 ) {
     let size = scale.unwrap_or(25);
 
     let mut loaded_logo = None;
     if let Some(l_path) = logo_path {
-        match image::ImageReader::open(&l_path).and_then(|r| r.decode().map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))) {
+        match image::ImageReader::open(&l_path)
+            .and_then(|r| r.decode().map_err(std::io::Error::other))
+        {
             Ok(img) => loaded_logo = Some(img),
             Err(e) => eprintln!("{} {}", "Warning: Failed to load logo image:".yellow(), e),
         }
@@ -360,7 +365,7 @@ fn save_png(
 
     match generator.to_png(size, loaded_logo.as_ref()) {
         Ok(bytes) => {
-            if let Err(e) = std::fs::write(path, bytes) {
+            if let Err(e) = secure_write(path, bytes, _force) {
                 eprintln!("{} {}", "Error writing PNG:".red(), e);
             }
         }
@@ -377,7 +382,6 @@ fn print_terminal_qr(qr: &qr_rs::qrcode::QrCode) {
 }
 
 fn prompt_for_output(prompt: &str) -> Result<Option<PathBuf>, String> {
-
     let output: String = Input::with_theme(&ColorfulTheme::default())
         .with_prompt(prompt)
         .allow_empty(true)
