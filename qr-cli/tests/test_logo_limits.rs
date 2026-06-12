@@ -16,7 +16,7 @@ fn test_logo_limits() {
     fs::write(dummy_logo, "not an image").unwrap();
 
     let mut cmd = Command::cargo_bin("qr-cli").unwrap();
-    let assert = cmd
+    let _assert = cmd
         .arg("url")
         .arg("https://example.com")
         .arg("--logo")

@@ -4,7 +4,7 @@
 
 [![Crates.io](https://img.shields.io/crates/v/qr-scan-rs.svg)](https://crates.io/crates/qr-scan-rs)
 [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](LICENSE)
-[![Build Status](https://github.com/LimaniBhavik/qr-scan-rs/workflows/CI/badge.svg)](https://github.com/LimaniBhavik/qr-scan-rs/actions)
+[![Build Status](https://github.com/LimaniBhavik/qr-scan-rs/workflows/CI/badge.svg?branch=main)](https://github.com/LimaniBhavik/qr-scan-rs/actions)
 
 **A comprehensive, multi-target QR code generator for Rust.**
 
@@ -134,6 +134,29 @@ To run the web version locally:
 
 ---
 
+
+## 📖 Technical Guide
+
+**QR.RS** is built with a strong focus on performance, security, and portability, making it suitable for high-throughput backend services and client-side WebAssembly applications alike.
+
+### Architecture
+The project is structured as a Cargo workspace with four main crates:
+- **`qr-scan-rs`**: The core library handling data validation, encoding, and image rendering.
+- **`qr-cli`**: A command-line interface utilizing `clap` and `dialoguer` for scripting and interactive use.
+- **`qr-gui`**: A native desktop application built with `egui`.
+- **`qr-web`**: A browser-based frontend powered by `yew` and compiled to WebAssembly.
+
+### Performance Optimizations
+- **Zero-Allocation Strategies**: Central formatting pipelines extensively use `std::borrow::Cow<'_, str>` and pre-allocated string buffers (`String::with_capacity()`) to minimize heap allocations during tight loops (e.g., vCard and WiFi payload generation).
+- **Optimized Rendering**: Pixel-by-pixel color mapping during PNG generation bypasses iterator overhead by utilizing fast slice operations (`chunks_exact_mut` and `copy_from_slice`).
+- **Memory-Efficient Encoding**: PNG encoding heuristically pre-allocates buffers (~10% of raw RGBA size) to prevent excessive reallocation during compression.
+- **Yew State Management**: The WebAssembly frontend (`qr-web`) uses `AttrValue` (O(1) cloning) and passes shared references (`Rc`) to prevent deep-cloning of UI state during render cycles.
+
+### Security Features
+- **Denial of Service (DoS) Prevention**: External image loading (e.g., logo overlays) enforces strict resource limits (512MB max allocation, 4096px bounds) via `image::Limits` to neutralize decompression bombs.
+- **Injection Mitigation**: Payload generation (like vCards) strictly escapes newlines (`\n`, `\r`) and strips control characters and Unicode line separators (`\u{2028}`, `\u{2029}`) to prevent malicious field injection.
+- **Path Traversal & Symlink Attacks**: The CLI module centralizes file writing through `secure_write()`, utilizing `canonicalize()` to prevent path traversal, and `OpenOptions::new().write(true).create_new(true)` to mitigate Time-of-Check to Time-of-Use (TOCTOU) symlink overwrites.
+- **ReDoS Protection**: Regular expressions (e.g., for email and phone validation) are kept linear and initialized safely via `std::sync::OnceLock`.
 ## 📚 Library Integration
 
 You can use `qr-scan-rs` as a library in your own Rust projects.
@@ -141,7 +164,7 @@ You can use `qr-scan-rs` as a library in your own Rust projects.
 Add to `Cargo.toml`:
 ```toml
 [dependencies]
-qr-scan-rs = "0.4.1"
+qr-scan-rs = "0.5.0"
 ```
 
 ### Examples

@@ -4,7 +4,7 @@ use qr_rs::formats::ContactData;
 use qr_rs::utils::parse_hex_color;
 use qr_rs::{QRBuilder, QRData};
 use wasm_bindgen::prelude::*;
-use web_sys::HtmlInputElement;
+use web_sys::{HtmlInputElement, HtmlTextAreaElement};
 use yew::prelude::*;
 
 mod components;
@@ -93,7 +93,7 @@ pub fn qr_web() -> Html {
                 let data = match m {
                     Mode::Url => QRData::URL(u.to_string()),
                     Mode::Text => QRData::Text(t.to_string()),
-                    Mode::Contact => QRData::Contact(ContactData::from((**c).clone())),
+                    Mode::Contact => QRData::Contact(ContactData::from((*c).clone())),
                 };
 
                 builder = builder.data(data);
@@ -109,8 +109,8 @@ pub fn qr_web() -> Html {
                     None
                 }
             },
-        );
-    }
+        )
+    };
 
     let on_mode_url = {
         let mode = mode.clone();
