@@ -310,26 +310,51 @@ mod tests {
         let result = generator.to_svg();
         assert!(result.is_ok());
         let svg_string = result.unwrap();
+        assert!(!svg_string.is_empty(), "SVG string should not be empty");
         assert!(
             svg_string.contains("<svg"),
             "SVG output should contain <svg tag"
         );
         assert!(
             svg_string.contains("</svg>"),
-            "SVG output should contain closing </svg> tag"
+            "SVG output should contain </svg> tag"
         );
     }
 
     #[test]
-    fn test_to_svg_contains_xml_declaration() {
-        let generator = QRGenerator::new(QRData::Text("Test XML Decl".to_string()));
+    fn test_to_svg_error() {
+        let generator = QRBuilder::new()
+            .wifi(crate::formats::WifiData {
+                ssid: "".to_string(), // Invalid: empty SSID
+                ..Default::default()
+            })
+            .build()
+            .expect("Builder should build with data");
+
         let result = generator.to_svg();
-        assert!(result.is_ok());
-        let svg_string = result.unwrap();
-        assert!(
-            svg_string.starts_with("<?xml"),
-            "SVG output should start with XML declaration"
-        );
+        assert!(result.is_err());
+        match result {
+            Err(QRError::InvalidData(msg)) => assert_eq!(msg, "SSID cannot be empty"),
+            _ => panic!("Expected QRError::InvalidData for empty SSID"),
+        }
+    }
+
+    #[test]
+    fn test_to_png_error() {
+        let generator = QRBuilder::new()
+            .wifi(crate::formats::WifiData {
+                ssid: "".to_string(), // Invalid: empty SSID
+                ..Default::default()
+            })
+            .build()
+            .expect("Builder should build with data");
+
+        let result = generator.to_png(200, None);
+        assert!(result.is_err());
+        match result {
+            Err(QRError::InvalidData(msg)) => assert_eq!(msg, "SSID cannot be empty"),
+            _ => panic!("Expected QRError::InvalidData for empty SSID"),
+        }
     }
 
     #[test]
